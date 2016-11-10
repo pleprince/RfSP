@@ -1,0 +1,42 @@
+{
+    "PxrDisney": {
+        "basecolor": {
+            "name": "baseColor",
+            "type": "color"
+        },
+        "specular": {
+            "name": "specular",
+            "type": "float"
+        },
+        "roughness": {
+            "name": "roughness",
+            "type": "float"
+        },
+        "metallic": {
+            "name": "metallic",
+            "type": "float"
+        },
+        "opacity": {
+            "name": null,
+            "type": null
+        },
+        "emissive": {
+            "name": "emitColor",
+            "type": "color"
+        },
+        "height": {
+            "name": "bumpNormal",
+            "type": "normal"
+        },
+        "normal": {
+            "name": "bumpNormal",
+            "type": "normal"
+        }
+    },
+    "PxrSurface": {
+        "basecolor": {
+            "name": "diffuseColor",
+            "type": "color"
+        }
+    }
+}
