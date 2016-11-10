@@ -15,7 +15,7 @@ Button {
       border.width: isDefaultButton ? 2 : 1
       border.color: control.pressed ? rmanblue : isDefaultButton ? "#ccc" : "#222"
       radius: 4
-      color: control.pressed ? "#323232" : control.hovered ? rmanbluebg : "#292929"
+      color: control.pressed ? "#323232" : control.hovered ? rmanbluebg : "#333"
     }
     label: Component {
       Text {
