@@ -35,8 +35,9 @@ Row
 
         onClicked:
         {
-            try //-> Handle processing errors if necessary
+            try
             {
+                alg.log.info( 'RenderMan: Export PxrDisney-based asset...')
                 Renderman.exportAssets('PxrDisney')
             }
             catch(err)
@@ -71,9 +72,10 @@ Row
 
         onClicked:
         {
-            try //-> Handle processing errors if necessary
+            try
             {
-                Renderman.exportAssets('PxrSurface')
+                // Renderman.exportAssets('PxrSurface')
+                alg.log.error( 'rman: Export to PxrSurface not implemented yet !' )
             }
             catch(err)
             {

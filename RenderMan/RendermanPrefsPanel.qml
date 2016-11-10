@@ -17,13 +17,19 @@ Dialog
         if (rmanPathField.text != "")
         {
             alg.settings.setValue("RMANTREE", rmanPathField.text)
-            alg.log.info("RMANTREE = "+rmanPathField.text)
+            // alg.log.info("RMANTREE = "+rmanPathField.text)
         }
         if (rmsPathField.text != "")
         {
             alg.settings.setValue("RMSTREE", rmsPathField.text)
-            alg.log.info("RMSTREE = "+rmsPathField.text)
+            // alg.log.info("RMSTREE = "+rmsPathField.text)
         }
+        if (exportPathField.text != "")
+        {
+            alg.settings.setValue("saveTo", exportPathField.text)
+            // alg.log.info("saveTo = "+exportPathField.text)
+        }
+
         accepted()
         close()
     }
@@ -32,6 +38,7 @@ Dialog
     {
         rmanPathField.readPrefs()
         rmsPathField.readPrefs()
+        exportPathField.readPrefs()
     }
 
     FocusScope
@@ -53,7 +60,7 @@ Dialog
     {
         color: "#292929"
         implicitWidth: 600
-        implicitHeight: 150
+        implicitHeight: 180
         anchors.fill: parent
         property var text_color: "#c0c0c0"
 
@@ -81,7 +88,7 @@ Dialog
             {
                 id: rmanPathLabel
                 text: "RenderMan Pro Server:"
-                horizontalAlignment: text.alignRight
+                horizontalAlignment: Text.AlignRight
                 color: "#e6e6e6"
                 Layout.minimumWidth: 150
                 Layout.maximumWidth: 150
@@ -132,7 +139,7 @@ Dialog
             Text {
                 id: rmsPathLabel
                 text: "RenderMan For Maya:"
-                horizontalAlignment: text.alignRight
+                horizontalAlignment: Text.AlignRight
                 color: "#e6e6e6"
                 Layout.minimumWidth: 150
                 Layout.maximumWidth: 150
@@ -168,6 +175,55 @@ Dialog
                 }
             }
         }
+
+        RowLayout {
+            id: exportlayout
+            x:10; y:100
+            height: 30
+            width: parent.width
+            spacing: 6
+            Layout.fillWidth: true
+
+            Text {
+                id: exportPathLabel
+                text: "Export to:"
+                horizontalAlignment: Text.AlignRight
+                color: "#e6e6e6"
+                Layout.minimumWidth: 150
+                Layout.maximumWidth: 150
+            }
+            RendermanTextField {
+                id: exportPathField
+                placeholderText: "where the asset(s) will be saved"
+                anchors.left: exportPathLabel.right
+                anchors.right: exportPathButton.left
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+
+                function readPrefs()
+                {
+                    text = alg.settings.value("saveTo")
+                }
+
+                Component.onCompleted: {
+                    readPrefs()
+                }
+            }
+            RendermanButton
+            {
+                id: exportPathButton
+                text: "pick"
+                width: 40
+                height: 10
+                anchors.right: exportlayout.right
+                anchors.rightMargin: 20
+                onClicked: {
+                    folderPickerDialog.fieldid = exportPathField
+                    folderPickerDialog.setVisible(true)
+                }
+            }
+        }
+
 
         RendermanButton
         {
