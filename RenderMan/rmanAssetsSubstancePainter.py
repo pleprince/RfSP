@@ -307,7 +307,7 @@ def export():
             err()
 
     # clean-up intermediate files
-    if False:
+    if True:
         for mat in matArray:
             for ch, fpath in chans.iteritems():
                 if not os.path.exists(fpath):
