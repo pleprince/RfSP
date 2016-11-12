@@ -26,6 +26,7 @@ This plugin will NOT work without the following software:
 * Substance Painter 2.3+
 * RenderMan Pro Server 21.0+
 * RenderMan For Maya 21.0+
+* [Python 2.7+](https://www.python.org/downloads/release/python-2712/) (but not Python 3.x)
 
 ## Install
 
@@ -44,15 +45,19 @@ This plugin will NOT work without the following software:
 ## Usage
 
 1. On first use, open the "configure" dialog.
+
    ![Alt](img/open_configure_dialog.jpg "open config dialog")
 
 1. Fill ALL fields of the dialog and click "Save", otherwise the export will fail.
+
    ![Alt](img/configure_dialog.jpg "open config dialog")
 
-1. Once this initial configuratiion is done, the settings will be remembered even if you close Substance Painter.
+1. Once this initial configuration is done, the settings will be remembered even if you close Substance Painter.
 
 1. Open a SP project and click one of the pixar buttons in the shelf.
-   Hint: Only the first one works for now.
+
+   Hint: _Only the first one (PxrDisney) works for now._
+
    ![Alt](img/shelf_buttons.jpg "open config dialog")
 
 ## Release notes
@@ -65,4 +70,6 @@ This plugin will NOT work without the following software:
 * Implemented basic export to PxrDisney-based asset.
   * Each TextureSet will be exported as a RenderManAsset directory.
 
+### 0.1.1
 
+* Added license text to all source files.
