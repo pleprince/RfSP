@@ -58,7 +58,8 @@ function exportAssets(bxdf) {
     //
     var sep = "/"
     var pyBin = "python"
-    if (Qt.platform.os == "windows") {
+    var winOS = (Qt.platform.os == "windows")
+    if (winOS) {
         sep = "\\"
         pyBin += ".exe"
     }
@@ -73,7 +74,13 @@ function exportAssets(bxdf) {
 
     // Query export path
     //
-    exportPath = alg.mapexport.exportPath() + sep + "RenderMan" + sep
+    exportPath = alg.mapexport.exportPath()
+    if (winOS) {
+        var tmp = new String(exportPath)
+        exportPath = tmp.replace(/\//g, "\\")
+        // alg.log.info("[WIN] exportPath = " + exportPath)
+    }
+    exportPath += sep + "RenderMan" + sep
     jsonFilePath = exportPath + "RmanExport.json"
 
     // Export masks
