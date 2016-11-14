@@ -23,6 +23,27 @@
 // ----------------------------------------------------------------------------
 
 
+function osPath(input_path) {
+    var platformPath = input_path
+    if (Qt.platform.os == "windows") {
+        var tmp = new String(platformPath)
+        platformPath = tmp.replace(/\//g, "\\")
+        // alg.log.info("[WIN] platformPath = " + platformPath)
+    }
+    return platformPath
+}
+
+
+function jsonPath(input_path) {
+    var jsnPath = input_path
+    if (Qt.platform.os == "windows") {
+        var tmp = new String(jsnPath)
+        jsnPath = tmp.replace(/\\/g, "\\\\")
+        // alg.log.info("[WIN] jsnPath = " + jsnPath)
+    }
+    return jsnPath
+}
+
 
 function checkPrefs() {
     var all_valid = true
@@ -74,12 +95,7 @@ function exportAssets(bxdf) {
 
     // Query export path
     //
-    exportPath = alg.mapexport.exportPath()
-    if (winOS) {
-        var tmp = new String(exportPath)
-        exportPath = tmp.replace(/\//g, "\\")
-        // alg.log.info("[WIN] exportPath = " + exportPath)
-    }
+    exportPath = osPath(alg.mapexport.exportPath())
     exportPath += sep + "RenderMan" + sep
     jsonFilePath = exportPath + "RmanExport.json"
 
@@ -92,9 +108,9 @@ function exportAssets(bxdf) {
 
     // store env vars
     //
-    fileContent += tab + "\"RMANTREE\": \"" + alg.settings.value("RMANTREE") + "\",\n"
-    fileContent += tab + "\"RMSTREE\": \"" + alg.settings.value("RMSTREE") + "\",\n"
-    fileContent += tab + "\"saveTo\": \"" + alg.settings.value("saveTo") + "\",\n"
+    fileContent += tab + "\"RMANTREE\": \"" + jsonPath(alg.settings.value("RMANTREE")) + "\",\n"
+    fileContent += tab + "\"RMSTREE\": \"" + jsonPath(alg.settings.value("RMSTREE")) + "\",\n"
+    fileContent += tab + "\"saveTo\": \"" + jsonPath(alg.settings.value("saveTo")) + "\",\n"
     fileContent += tab + "\"document\": [\n"
 
     // Parse all materials (texture sets)
@@ -122,7 +138,7 @@ function exportAssets(bxdf) {
 
             // Prepare Data for json file
             //
-            fileContent += tab4 + "\"" + thisChannel + "\": \"" + output + "\""
+            fileContent += tab4 + "\"" + thisChannel + "\": \"" + jsonPath(output) + "\""
             if (channelIdx < numChannels - 1)
                 fileContent += ",\n"
             else
