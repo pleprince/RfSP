@@ -6,6 +6,8 @@ This plugin exports your [Substance Painter](https://www.allegorithmic.com/produ
 
 RenderManAsset is the format used by the preset browser that was introduced in [RenderMan For Maya](https://rmanwiki.pixar.com/display/REN/RenderMan+for+Maya) 21.0. It allows for easy material setup interchange and includes dependencies like textures or OSL shaders.
 
+[demo video of 0.1.1](img/RfSP_v0.1.1.mp4)
+
 ## Features
 
 ### ![Alt](RenderMan/icons/PxrDisney.png "PxrDisney") : Export to PxrDisney-based material
