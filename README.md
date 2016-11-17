@@ -66,6 +66,17 @@ This plugin will NOT work without the following software:
 
 ## Release notes
 
+### 0.1.2
+
+* windows file paths were not correctly serialized to json.
+* mention python dependency in README
+* Final cleanup was inadvertantly disabled
+* Fixed incorrect path on windows.
+
+### 0.1.1
+
+* Added license text to all source files.
+
 ### 0.1.0
 
 * Initial Release
@@ -74,6 +85,3 @@ This plugin will NOT work without the following software:
 * Implemented basic export to PxrDisney-based asset.
   * Each TextureSet will be exported as a RenderManAsset directory.
 
-### 0.1.1
-
-* Added license text to all source files.
