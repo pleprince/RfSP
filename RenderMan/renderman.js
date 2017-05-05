@@ -110,6 +110,7 @@ function exportAssets(bxdf) {
     //
     fileContent += tab + "\"RMANTREE\": \"" + jsonPath(alg.settings.value("RMANTREE")) + "\",\n"
     fileContent += tab + "\"RMSTREE\": \"" + jsonPath(alg.settings.value("RMSTREE")) + "\",\n"
+    fileContent += tab + "\"bxdf\": \"" + bxdf + "\",\n"
     fileContent += tab + "\"saveTo\": \"" + jsonPath(alg.settings.value("saveTo")) + "\",\n"
     fileContent += tab + "\"document\": [\n"
 

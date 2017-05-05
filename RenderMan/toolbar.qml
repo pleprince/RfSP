@@ -100,8 +100,7 @@ Row
         {
             try
             {
-                // Renderman.exportAssets('PxrSurface')
-                alg.log.error( 'rman: Export to PxrSurface not implemented yet !' )
+                Renderman.exportAssets('PxrSurface')
             }
             catch(err)
             {

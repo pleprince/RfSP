@@ -1,42 +1,257 @@
 {
     "PxrDisney": {
-        "basecolor": {
-            "name": "baseColor",
-            "type": "color"
-        },
-        "specular": {
-            "name": "specular",
-            "type": "float"
-        },
-        "roughness": {
-            "name": "roughness",
-            "type": "float"
-        },
-        "metallic": {
-            "name": "metallic",
-            "type": "float"
-        },
-        "opacity": {
-            "name": null,
-            "type": null
-        },
-        "emissive": {
-            "name": "emitColor",
-            "type": "color"
-        },
-        "height": {
-            "name": "bumpNormal",
-            "type": "normal"
-        },
-        "normal": {
-            "name": "bumpNormal",
-            "type": "normal"
+        "mapping": {
+            "basecolor": {
+                "param": "baseColor",
+                "type": "color"
+            },
+            "specular": {
+                "param": "specular",
+                "type": "float"
+            },
+            "roughness": {
+                "param": "roughness",
+                "type": "float"
+            },
+            "metallic": {
+                "param": "metallic",
+                "type": "float"
+            },
+            "opacity": {
+                "param": null,
+                "type": null
+            },
+            "emissive": {
+                "param": "emitColor",
+                "type": "color"
+            },
+            "height": {
+                "param": "bumpNormal",
+                "type": "normal"
+            },
+            "normal": {
+                "param": "bumpNormal",
+                "type": "normal"
+            }
         }
     },
     "PxrSurface": {
-        "basecolor": {
-            "name": "diffuseColor",
-            "type": "color"
+        "mapping": {
+            "basecolor": {
+                "param": "graph",
+                "type": "color"
+            },
+            "specular": {
+                "param": "graph",
+                "type": "color"
+            },
+            "roughness": {
+                "param": "specularRoughness",
+                "type": "float"
+            },
+            "metallic": {
+                "param": "graph",
+                "type": "float"
+            },
+            "opacity": {
+                "param": null,
+                "type": null
+            },
+            "emissive": {
+                "param": "glowColor",
+                "type": "color"
+            },
+            "height": {
+                "param": "bumpNormal",
+                "type": "normal"
+            },
+            "normal": {
+                "param": "bumpNormal",
+                "type": "normal"
+            }
+        },
+        "graph": {
+            "nodes": {
+                "_specFaceColor": {
+                    "nodetype": "PxrBlend",
+                    "params": {
+                        "operation": {
+                            "type": "int",
+                            "value": 19
+                        },
+                        "topA": {
+                            "type": "float",
+                            "value": 0.0
+                        },
+                        "bottomRGB": {
+                            "type": "color",
+                            "value": [
+                                1,
+                                1,
+                                1
+                            ]
+                        },
+                        "bottomA": {
+                            "type": "float",
+                            "value": 0.08
+                        }
+                    }
+                },
+                "_specEdgeColor": {
+                    "nodetype": "PxrBlend",
+                    "params": {
+                        "operation": {
+                            "type": "int",
+                            "value": 19
+                        },
+                        "topA": {
+                            "type": "float",
+                            "value": 0.0
+                        },
+                        "bottomRGB": {
+                            "type": "color",
+                            "value": [
+                                1,
+                                1,
+                                1
+                            ]
+                        },
+                        "bottomA": {
+                            "type": "float",
+                            "value": 1.0
+                        }
+                    }
+                },
+                "_diffuseAtten": {
+                    "nodetype": "PxrBlend",
+                    "params": {
+                        "operation": {
+                            "type": "int",
+                            "value": 19
+                        },
+                        "topRGB": {
+                            "type": "color",
+                            "value": [
+                                0,
+                                0,
+                                0
+                            ]
+                        }
+                    }
+                }
+            },
+            "connections": [
+                {
+                    "src": {
+                        "node": "_specFaceColor",
+                        "param": "resultRGB"
+                    },
+                    "dst": {
+                        "node": "PxrSurface",
+                        "param": "specularFaceColor",
+                        "type": "color"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "_specEdgeColor",
+                        "param": "resultRGB"
+                    },
+                    "dst": {
+                        "node": "PxrSurface",
+                        "param": "specularEdgeColor",
+                        "type": "color"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "_diffuseAtten",
+                        "param": "resultRGB"
+                    },
+                    "dst": {
+                        "node": "PxrSurface",
+                        "param": "diffuseColor",
+                        "type": "color"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:basecolor",
+                        "param": "resultRGB"
+                    },
+                    "dst": {
+                        "node": "_specEdgeColor",
+                        "param": "topRGB",
+                        "type": "color"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:basecolor",
+                        "param": "resultRGB"
+                    },
+                    "dst": {
+                        "node": "_specFaceColor",
+                        "param": "topRGB",
+                        "type": "color"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:basecolor",
+                        "param": "resultRGB"
+                    },
+                    "dst": {
+                        "node": "_diffuseAtten",
+                        "param": "bottomRGB",
+                        "type": "color"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:metallic",
+                        "param": "resultR"
+                    },
+                    "dst": {
+                        "node": "_specEdgeColor",
+                        "param": "topA",
+                        "type": "float"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:metallic",
+                        "param": "resultR"
+                    },
+                    "dst": {
+                        "node": "_specFaceColor",
+                        "param": "topA",
+                        "type": "float"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:metallic",
+                        "param": "resultR"
+                    },
+                    "dst": {
+                        "node": "_diffuseAtten",
+                        "param": "topA",
+                        "type": "float"
+                    }
+                },
+                {
+                    "src": {
+                        "node": "ch:specular",
+                        "param": "resultRGB "
+                    },
+                    "dst": {
+                        "node": "_specFaceColor",
+                        "param": "bottomRGB",
+                        "type": "color"
+                    }
+                }
+            ]
         }
     }
 }

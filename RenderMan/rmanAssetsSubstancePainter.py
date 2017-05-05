@@ -25,12 +25,18 @@
 
 # python 2.7 plugin for substance painter 2.3+
 
+# pylint: disable=import-error
+# pylint: disable=global-statement
+# pylint: disable=invalid-name
+# pylint: disable=bare-except
+
 # standard imports first
 import os
 import os.path
 import sys
 import json
-import platform
+import re
+# import platform
 from time import gmtime, strftime
 import traceback
 import shutil
@@ -44,7 +50,6 @@ _logfile = None
 
 def msg(s):
     global _logfile
-    global thisDir
     if _logfile is None:
         log = os.path.join(thisDir, 'log.txt')
         # print '>> %s\n' % log
@@ -60,7 +65,6 @@ def msg(s):
 
 
 def err():
-    global _logfile
     try:
         msg('  err: ' + str(sys.exc_info()[0]))
     except:
@@ -83,7 +87,7 @@ def onExit():
 
 
 def exitWithError():
-    global thisDir
+    # global thisDir
     print 'An error occured.'
     print 'Check the log file: %s' % (os.path.join(thisDir, 'log.txt'))
     onExit()
@@ -131,7 +135,7 @@ def export():
         os.environ['RMSTREE'] = rmstree
 
     rmstree_py = os.path.join(rmstree, "scripts")
-    if not rmstree_py in sys.path:
+    if rmstree_py not in sys.path:
         sys.path.append(rmstree_py)
 
     # now import our module
@@ -148,10 +152,12 @@ def export():
     # constants
     #
     _bump = ['height', 'normal']
-    slotsFile = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), 'rules.json')
+    slotsFile = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                             'rules.json')
     _rules = readJson(slotsFile)
     msg('OK: rules read')
+
+    _bxdf = jsonDict['bxdf']
 
     # we save the assets to SP's export directory, because we know it is writable.
     # We will move them to the requested location later.
@@ -164,6 +170,7 @@ def export():
     matArray = jsonDict['document']
     for mat in matArray:
         label = mat['textureSet']
+        label = 'sp_' + label
         chans = mat['channels']
         msg('+ Exporting %s' % label)
 
@@ -192,11 +199,17 @@ def export():
             onExit()
             sys.exit(0)
 
+        # create standard metadata
+        #
+        meta = Asset.stdMetadata()
+        for k, v in meta.iteritems():
+            Asset.addMetadata(k, v)
+
         # Compatibility data
         # This will help other application decide if they can use this asset.
         # FIXME: versions are hard-coded.
         #
-        prmanVersion = '21.2'
+        prmanVersion = '21.3'
         Asset.setCompatibility(hostName='Substance Painter',
                                hostVersion='2.4',
                                rendererVersion=prmanVersion)
@@ -209,7 +222,36 @@ def export():
         Asset.addNode(rootNode, 'shadingEngine', 'root', 'shadingEngine')
         pdict = {'type': 'reference float[]', 'value': None}
         Asset.addParam(rootNode, 'surfaceShader', pdict)
+        msg('  + Root node: %s' % rootNode)
 
+        # add a disney or pixar bxdf
+        #
+        bxdfNode = label + "_Srf"
+        Asset.addNode(bxdfNode, _bxdf, 'bxdf', _bxdf)
+        msg('  + BxDF node: %s  (%s)' % (rootNode, _bxdf))
+
+        # connect surf to root node
+        #
+        Asset.addConnection('%s.outColor' % bxdfNode,
+                            '%s.surfaceShader' % rootNode)
+
+        # build additional nodes if need be.
+        #
+        if 'graph' in _rules[_bxdf]:
+            msg('  + Create graph nodes...')
+            for nname, ndict in _rules[_bxdf]['graph']['nodes'].iteritems():
+                lname = label + nname
+                Asset.addNode(lname, ndict['nodetype'],
+                              'pattern', ndict['nodetype'])
+                msg('    |_ %s  (%s)' % (lname, ndict['nodetype']))
+                if 'params' in ndict:
+                    for pname, pdict in ndict['params'].iteritems():
+                        Asset.addParam(lname, pname, pdict)
+                        msg('       |_ param: %s %s = %s' %
+                            (pdict['type'], pname, pdict['value']))
+
+        # create texture nodes
+        msg('  + Create texture nodes...')
         chanNodes = {}
         for ch, fpath in chans.iteritems():
             nodeName = "%s_%s_tex" % (label, ch)
@@ -235,19 +277,16 @@ def export():
                     pdict = {'type': 'float', 'value': 1.0}
                     Asset.addParam(nodeName, 'adjustAmount', pdict)
                 else:
-                    print 'wow: %s' % ch
+                    msg('    ! wow: %s' % ch)
+            msg('    |_ %s' % nodeName)
 
-        # add a disney bxdf
+        # make direct connections
         #
-        bxdfNode = label + "_Srf"
-        Asset.addNode(bxdfNode, 'PxrDisney', 'bxdf', 'PxrDisney')
-
-        # make connections
-        #
+        msg('  + Direct connections...')
         for ch in chans:
             src = None
-            dstType = _rules['PxrDisney'][ch]['type']
-            dstParam = _rules['PxrDisney'][ch]['name']
+            dstType = _rules[_bxdf]['mapping'][ch]['type']
+            dstParam = _rules[_bxdf]['mapping'][ch]['param']
             if dstType == 'normal':
                 src = '%s.resultN' % (chanNodes[ch])
             elif dstType == 'color':
@@ -256,20 +295,60 @@ def export():
                 src = '%s.resultR' % (chanNodes[ch])
             else:
                 # don't create a connection
-                print 'WARNING: Not connecting: %s' % ch
+                if dstParam != 'graph':
+                    # connections with a graph type will be handled later, so
+                    # we don't warn in that case.
+                    print 'WARNING: Not connecting: %s' % ch
+                continue
+            if dstParam == 'graph':
                 continue
             dst = '%s.%s' % (bxdfNode, dstParam)
             Asset.addConnection(src, dst)
-
+            msg('    |_ connect: %s -> %s' % (src, dst))
             # also tag the bxdf param as connected
-            #
             pdict = {'type': 'reference ' + dstType, 'value': None}
             Asset.addParam(bxdfNode, dstParam, pdict)
+            msg('       |_ param: %s %s -> %s' % (pdict['type'],
+                                                  dstParam,
+                                                  pdict['value']))
 
-        # connect surf to root node
+        # make graph connections
         #
-        Asset.addConnection('%s.outColor' %
-                            bxdfNode, '%s.surfaceShader' % rootNode)
+        if 'graph' in _rules[_bxdf]:
+            if 'connections' in _rules[_bxdf]['graph']:
+                msg('  + Connect graph nodes...')
+                for con in _rules[_bxdf]['graph']['connections']:
+
+                    src_node = con['src']['node']
+                    src_ch = None
+                    if src_node == _bxdf:
+                        src_node = bxdfNode
+                    elif src_node.startswith('ch:'):
+                        src_ch = src_node[3:]
+                        src_node = chanNodes[src_ch]
+                    if not src_node.startswith(label):
+                        src_node = label + src_node
+                    src = '%s.%s' % (src_node, con['src']['param'])
+
+                    dst_node = con['dst']['node']
+                    dst_ch = None
+                    if dst_node == _bxdf:
+                        dst_node = bxdfNode
+                    elif dst_node.startswith('ch:'):
+                        dst_ch = dst_node[3:]
+                        dst_node = chanNodes[dst_ch]
+                    if not dst_node.startswith(label):
+                        dst_node = label + dst_node
+                    dst = '%s.%s' % (dst_node, con['dst']['param'])
+                    Asset.addConnection(src, dst)
+                    msg('    |_ connect: %s -> %s' % (src, dst))
+                    # mark param as a connected
+                    dstType = con['dst']['type']
+                    pdict = {'type': 'reference %s' % dstType, 'value': None}
+                    Asset.addParam(dst_node, con['dst']['param'], pdict)
+                    msg('       |_ param: %s %s = %s' % (pdict['type'],
+                                                         con['dst']['param'],
+                                                         pdict['value']))
 
         # save asset
         #
@@ -333,6 +412,9 @@ def export():
         msg('skipped cleanup')
 
     msg('RenderMan : Done !')
+
+
+# main
 
 try:
     export()
