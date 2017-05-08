@@ -325,7 +325,10 @@ def export():
                         src_node = bxdfNode
                     elif src_node.startswith('ch:'):
                         src_ch = src_node[3:]
-                        src_node = chanNodes[src_ch]
+                        if src_ch in chanNodes:
+                            src_node = chanNodes[src_ch]
+                        else:
+                            continue
                     if not src_node.startswith(label):
                         src_node = label + src_node
                     src = '%s.%s' % (src_node, con['src']['param'])
@@ -336,7 +339,10 @@ def export():
                         dst_node = bxdfNode
                     elif dst_node.startswith('ch:'):
                         dst_ch = dst_node[3:]
-                        dst_node = chanNodes[dst_ch]
+                        if dst_ch in chanNodes:
+                            dst_node = chanNodes[dst_ch]
+                        else:
+                            continue
                     if not dst_node.startswith(label):
                         dst_node = label + dst_node
                     dst = '%s.%s' % (dst_node, con['dst']['param'])
