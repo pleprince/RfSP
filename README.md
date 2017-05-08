@@ -66,6 +66,11 @@ This plugin will NOT work without the following software:
 
 ## Release notes
 
+### 0.1.4
+* Initial support for PxrSurface
+  * Simply use the rough metal workflow in Substance Painter and it will be converted to work with PxrSurface.
+  * Also fixed Issue #2, reported by dayelov. Thanks !
+
 ### 0.1.2
 
 * windows file paths were not correctly serialized to json.
