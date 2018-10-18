@@ -102,3 +102,4 @@ ENV/
 
 log.txt
 settings.ini
+.vscode
