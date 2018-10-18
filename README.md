@@ -66,7 +66,22 @@ This plugin will NOT work without the following software:
 
 ## Release notes
 
+### 0.2.0
+
+* New
+  * Added support for RenderMan 22.x.
+    * REMEMBER to change the SP prefs to point to RenderMan 22.x
+  * The assets are now named after the SP project's name.
+* Fixed
+  * The specular was incorrect when outputing for PxrSurface.
+  * The correct renderman version number is saved in the asset file.
+* code
+  * Refactored file path management.
+  * Used logging module instead of my own.
+  * Doc strings and PEP-8 fixes
+
 ### 0.1.4
+
 * Initial support for PxrSurface
   * Simply use the rough metal workflow in Substance Painter and it will be converted to work with PxrSurface.
   * Also fixed Issue #2, reported by dayelov. Thanks !
@@ -89,4 +104,3 @@ This plugin will NOT work without the following software:
 * Export all channels from all textureSets to png files.
 * Implemented basic export to PxrDisney-based asset.
   * Each TextureSet will be exported as a RenderManAsset directory.
-
