@@ -86,14 +86,14 @@
                         "bottomRGB": {
                             "type": "color",
                             "value": [
-                                1,
-                                1,
-                                1
+                                0.04,
+                                0.04,
+                                0.04
                             ]
                         },
                         "bottomA": {
                             "type": "float",
-                            "value": 0.08
+                            "value": 1.0
                         }
                     }
                 },
