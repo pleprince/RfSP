@@ -66,6 +66,11 @@ This plugin will NOT work without the following software:
 
 ## Release notes
 
+### 0.2.1
+
+* Fixed
+  * Fix ui error in Substance Painter 2018 (was ok in SP 2.x)
+
 ### 0.2.0
 
 * New

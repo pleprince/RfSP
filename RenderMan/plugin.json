@@ -1,6 +1,6 @@
 {
     "description": "This plugin exports a painter project to RenderMan Assets.",
     "url": "https://github.com/pleprince/RfSP",
-    "version": "0.2",
+    "version": "0.2.1",
 	"license": "<a href=\"https://opensource.org/licenses/MIT\">MIT</a>"
 }
