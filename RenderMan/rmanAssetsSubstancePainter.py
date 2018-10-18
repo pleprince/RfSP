@@ -105,7 +105,7 @@ def readJson(fpath):
     return data
 
 
-def setup_environment():
+def setup_environment(jsonDict):
     """make sure that:
     - RMANTREE and RMSTREE are defined in our environment
     - we can import our python module
@@ -154,7 +154,8 @@ def export():
     jsonDict = readJson(jsonFile)
     msg('OK: json read')
 
-    setup_environment()
+    setup_environment(jsonDict)
+    import rfm.rmanAssets as ra
     msg('OK: imported rfm.rmanAssets')
 
     # constants
