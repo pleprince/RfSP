@@ -100,10 +100,42 @@ def exitWithSuccess():
 
 
 def readJson(fpath):
-    fh = open(fpath, 'r')
-    data = json.load(fh)
-    fh.close()
+    with open(fpath, 'r') as fh:
+        data = json.load(fh)
     return data
+
+
+def setup_environment():
+    """make sure that:
+    - RMANTREE and RMSTREE are defined in our environment
+    - we can import our python module
+    """
+    rmantree = jsonDict['RMANTREE']
+    rmstree = jsonDict['RMSTREE']
+
+    if not rmantree in os.environ:
+        os.environ['RMANTREE'] = rmantree
+    if not rmstree in os.environ:
+        os.environ['RMSTREE'] = rmstree
+
+    if 'RenderManProServer-21.' in rmantree:
+        rmstree_py = os.path.join(rmstree, "scripts")
+        if rmstree_py not in sys.path:
+            sys.path.append(rmstree_py)
+    else:
+        rmantree_py = os.path.join(rmantree, "bin")
+        if rmantree_py not in sys.path:
+            sys.path.append(rmantree_py)
+
+    # now import our module
+    #
+    try:
+        import rfm.rmanAssets as ra
+    except:
+        err()
+        msg('ERROR: failed to import rfm.rmanAssets')
+        msg('sys.path : %s' % str(sys.path).replace(',', '\n'))
+        raise ImportError
 
 
 def export():
@@ -122,31 +154,7 @@ def export():
     jsonDict = readJson(jsonFile)
     msg('OK: json read')
 
-    # make sure that:
-    # - RMANTREE and RMSTREE are defined in our environment
-    # - we can import our python module
-    #
-    rmantree = jsonDict['RMANTREE']
-    rmstree = jsonDict['RMSTREE']
-
-    if not rmantree in os.environ:
-        os.environ['RMANTREE'] = rmantree
-    if not rmstree in os.environ:
-        os.environ['RMSTREE'] = rmstree
-
-    rmstree_py = os.path.join(rmstree, "scripts")
-    if rmstree_py not in sys.path:
-        sys.path.append(rmstree_py)
-
-    # now import our module
-    #
-    try:
-        import rfm.rmanAssets as ra
-    except:
-        err()
-        msg('ERROR: failed to import rfm.rmanAssets')
-        msg('sys.path : %s' % str(sys.path).replace(',', '\n'))
-        raise Exception
+    setup_environment()
     msg('OK: imported rfm.rmanAssets')
 
     # constants

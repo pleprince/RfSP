@@ -1,5 +1,5 @@
 {
     "description": "This plugin exports a painter project to RenderMan Assets.",
     "url": "http://renderman.pixar.com",
-    "version": "0.1.0"
+    "version": "0.1.5"
 }
