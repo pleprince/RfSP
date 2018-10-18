@@ -143,7 +143,7 @@ Dialog
                 id:rmanPathButton
                 text: "pick"
                 onClicked: {
-                    alg.log.info("rman: click")
+                    // alg.log.info("rman: click")
                     folderPickerDialog.fieldid = rmanPathField
                     folderPickerDialog.open()
                 }
@@ -292,7 +292,7 @@ Dialog
 
             onVisibleChanged:
             {
-                if (visible == false)
+                if (visible == false && parent != null )
                 {
                     // alg.log.info("vis OFF")
                     parent.active()
