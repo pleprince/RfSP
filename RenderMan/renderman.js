@@ -75,6 +75,11 @@ function exportAssets(bxdf) {
         return
     }
 
+    var toks = alg.project.url().split('/')
+    var scene_name = toks[toks.length - 1]
+    scene_name = scene_name.split(".")[0]
+    alg.log.info("Scene name: " + scene_name)
+
     // Some useful variables
     //
     var sep = "/"
@@ -108,6 +113,7 @@ function exportAssets(bxdf) {
 
     // store env vars
     //
+    fileContent += tab + "\"scene\": \"" + scene_name + "\",\n"
     fileContent += tab + "\"RMANTREE\": \"" + jsonPath(alg.settings.value("RMANTREE")) + "\",\n"
     fileContent += tab + "\"RMSTREE\": \"" + jsonPath(alg.settings.value("RMSTREE")) + "\",\n"
     fileContent += tab + "\"bxdf\": \"" + bxdf + "\",\n"

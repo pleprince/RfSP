@@ -1,3 +1,6 @@
+"""python 2.7 plugin for substance painter 2.3+
+Export substance painter maps to a RenderMan Asset package.
+"""
 # -----------------------------------------------------------------------------
 #  MIT License
 #
@@ -23,309 +26,335 @@
 # -----------------------------------------------------------------------------
 
 
-# python 2.7 plugin for substance painter 2.3+
-
-# pylint: disable=import-error
-# pylint: disable=global-statement
-# pylint: disable=invalid-name
-# pylint: disable=bare-except
-
 # standard imports first
 import os
 import os.path
 import sys
-import json
 import re
-# import platform
-from time import gmtime, strftime
-import traceback
+import json
 import shutil
+import logging
 
-thisDir = os.path.dirname(os.path.realpath(__file__))
-_logfile = None
+THIS_DIR = os.path.dirname(os.path.realpath(__file__))
+LOGFILE = os.path.join(THIS_DIR, 'rfsp_log.txt')
+logging.basicConfig(filename=LOGFILE,
+                    filemode='w',
+                    level=logging.DEBUG,
+                    format='%(levelname)-10s %(message)s')
+DBUG = logging.debug
+INFO = logging.info
+WARN = logging.warning
+ERR = logging.error
+XCPT = logging.exception
 
+
+class FilePath(unicode):
+    """A class based on unicode to handle filepaths on various OS platforms.
+
+    Extends:
+        unicode
+    """
+
+    def __new__(cls, path):
+        """Create new unicode file path in POSIX format. Windows paths will be
+        converted.
+
+        Arguments:
+            path {str} -- a file path, in any format.
+        """
+        fpath = path
+        if os.sep is not '/':
+            fpath = fpath.replace(os.sep, '/')
+        return unicode.__new__(cls, fpath)
+
+    def osPath(self):
+        """return the platform-specif path, i.e. convert to windows format if
+        need be.
+
+        Returns:
+            str -- a path formatted for the current OS.
+        """
+        return r'%s' % os.path.normpath(self)
+
+    def exists(self):
+        """Check is the path actually exists, using os.path.
+
+        Returns:
+            bool -- True if the path exists.
+        """
+        return os.path.exists(self)
+
+    def join(self, *args):
+        """Combine the arguments with the current path and return a new
+        FilePath object.
+
+        Arguments:
+            *args {list} -- a list of path segments.
+
+        Returns:
+            FilePath -- A new object containing the joined path.
+        """
+        return FilePath(os.path.join(self, *args))
+
+    def dirname(self):
+        """Returns the dirname of the current path (using os.path.dirname) as a
+        FilePath object.
+
+        Returns:
+            FilePath -- the path's directory name.
+        """
+        return FilePath(os.path.dirname(self))
+
+    def basename(self):
+        """Return the basename, i.e. '/path/to/file.ext' -> 'file.ext'
+
+        Returns:
+            str -- The final segment of the path.
+        """
+        return os.path.basename(self)
+
+    def isWritable(self):
+        """Checks if the path is writable. The Write and Execute bits must
+        be enabled.
+
+        Returns:
+            bool -- True is writable
+        """
+        return os.access(self, os.W_OK | os.X_OK)
 
 # functions -------------------------------------------------------------------
 
-
-def msg(s):
-    global _logfile
-    if _logfile is None:
-        log = os.path.join(thisDir, 'log.txt')
-        # print '>> %s\n' % log
-        _logfile = open(log, 'w')
-        timestamp = strftime("%a, %d %b %Y %H:%M:%S", gmtime())
-        _logfile.write(timestamp + '\n')
-        _logfile.write(log + '\n')
-        _logfile.write('-----------------------\n')
-    # sys.stdout.write(s + '\n')
-    # sys.stdout.flush()
-    _logfile.write(s + '\n')
-    _logfile.flush()
-
-
-def err():
-    try:
-        msg('  err: ' + str(sys.exc_info()[0]))
-    except:
-        pass
-    try:
-        msg('     : ' + str(sys.exc_info()[1]))
-    except:
-        pass
-    try:
-        traceback.print_exc(file=_logfile)
-    except:
-        pass
-
-
-def onExit():
-    global _logfile
-    if _logfile is not None:
-        _logfile.write('Exit.\n')
-        _logfile.close()
-
-
-def exitWithError():
-    # global thisDir
-    print 'An error occured.'
-    print 'Check the log file: %s' % (os.path.join(thisDir, 'log.txt'))
-    onExit()
-    sys.exit(0)
-
-
-def exitWithSuccess():
-    onExit()
-    sys.exit(0)
-
-
 def readJson(fpath):
-    with open(fpath, 'r') as fh:
-        data = json.load(fh)
+    """Read a json file without exception handling.
+
+    Arguments:
+        fpath {str} -- full path to json file
+
+    Returns:
+        dict -- json data
+    """
+    with open(fpath, 'r') as fhdl:
+        data = json.load(fhdl)
     return data
 
 
 def setup_environment(jsonDict):
-    """make sure that:
-    - RMANTREE and RMSTREE are defined in our environment
-    - we can import our python module
+    """make sure that RMANTREE and RMSTREE are defined in our environment and
+    we can import our python module.
+
+    Arguments:
+        jsonDict {dict} -- json data
+
+    Returns:
+        tuple -- (rmanAssets, rman_version)
     """
-    rmantree = jsonDict['RMANTREE']
-    rmstree = jsonDict['RMSTREE']
+    rmantree = FilePath(jsonDict['RMANTREE'])
+    rmstree = FilePath(jsonDict['RMSTREE'])
 
     if not rmantree in os.environ:
-        os.environ['RMANTREE'] = rmantree
+        os.environ['RMANTREE'] = rmantree.osPath()
     if not rmstree in os.environ:
-        os.environ['RMSTREE'] = rmstree
+        os.environ['RMSTREE'] = rmstree.osPath()
 
-    if 'RenderManProServer-21.' in rmantree:
-        rmstree_py = os.path.join(rmstree, "scripts")
+    rman_version = float(re.search(r'RenderManProServer-(\d+\.\d+)', rmantree).group(1))
+
+    rmstree_py = rmstree.join(rmstree, "scripts")
+    if int(rman_version) == 21:
         if rmstree_py not in sys.path:
             sys.path.append(rmstree_py)
     else:
-        rmantree_py = os.path.join(rmantree, "bin")
+        rmantree_py = rmantree.join(rmantree, "bin")
+        if rmstree_py not in sys.path:
+            sys.path.insert(0, rmstree_py)
         if rmantree_py not in sys.path:
-            sys.path.append(rmantree_py)
-
-    # now import our module
-    #
-    try:
-        import rfm.rmanAssets as ra
-    except:
-        err()
-        msg('ERROR: failed to import rfm.rmanAssets')
-        msg('sys.path : %s' % str(sys.path).replace(',', '\n'))
-        raise ImportError
+            sys.path.insert(0, rmantree_py)
+    return rman_version
 
 
 def export():
-    msg('Start !')
+    """Export a RenderManAsset package based on  a json file.
+    """
+    INFO('Start !')
 
     if len(sys.argv) < 2:
-        msg('ERROR: expecting 2 arguments !')
+        ERR('expecting 2 arguments !')
         raise Exception
 
     # get the input json file
-    #
-    jsonFile = sys.argv[1].replace('"', '')
+    jsonFile = FilePath(sys.argv[1].replace('"', ''))
 
     # import json file
-    #
     jsonDict = readJson(jsonFile)
-    msg('OK: json read')
+    DBUG('OK: json read')
 
-    setup_environment(jsonDict)
-    import rfm.rmanAssets as ra
-    msg('OK: imported rfm.rmanAssets')
+    rman_version = setup_environment(jsonDict)
+    if int(rman_version) >= 22:
+        import rmanAssets.core as ra         # pylint: disable=import-error
+    else:
+        import rfm.rmanAssets as ra     # pylint: disable=import-error
+    DBUG('OK: imported rmanAssets')
 
     # constants
-    #
     _bump = ['height', 'normal']
-    slotsFile = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                             'rules.json')
+    slotsFile = FilePath(os.path.dirname(os.path.realpath(__file__))).join('rules.json')
     _rules = readJson(slotsFile)
-    msg('OK: rules read')
+    DBUG('OK: rules read')
 
     _bxdf = jsonDict['bxdf']
 
     # we save the assets to SP's export directory, because we know it is writable.
     # We will move them to the requested location later.
-    #
-    exportPath = os.path.dirname(jsonFile)
+    exportPath = jsonFile.dirname()
 
     # build assets
-    #
     assetList = []
+    scene = jsonDict['scene']
     matArray = jsonDict['document']
     for mat in matArray:
-        label = mat['textureSet']
-        label = 'sp_' + label
+        label = '%s_%s' % (scene, mat['textureSet'])
         chans = mat['channels']
-        msg('+ Exporting %s' % label)
+        DBUG('+ Exporting %s' % label)
 
-        assetPath = os.path.join(exportPath, label + '.rma')
-        msg('  + assetPath %s' % assetPath)
-        assetJsonPath = os.path.join(assetPath, 'asset.json')
-        msg('  + assetJsonPath %s' % assetJsonPath)
+        assetPath = exportPath.join(label + '.rma')
+        DBUG('  + assetPath %s' % assetPath)
+        assetJsonPath = assetPath.join('asset.json')
+        DBUG('  + assetJsonPath %s' % assetJsonPath)
 
         # create asset directory
-        if not os.path.exists(assetPath):
+        if not assetPath.exists():
             try:
-                os.mkdir(assetPath)
-            except:
-                err()
-                onExit()
+                os.mkdir(assetPath.osPath())
+            except (OSError, IOError):
+                XCPT('Asset directory could not be created !')
                 sys.exit(0)
-            msg('  + Created dir: %s' % assetPath)
+            DBUG('  + Created dir: %s' % assetPath)
         else:
-            msg('  + dir exists: %s' % assetPath)
+            DBUG('  + dir exists: %s' % assetPath)
 
         # create asset
         try:
-            Asset = ra.RmanAsset(assetType='nodeGraph', label=label)
-        except:
-            err()
-            onExit()
+            asset = ra.RmanAsset(assetType='nodeGraph', label=label)
+        except Exception:
+            XCPT('Asset creation failed')
             sys.exit(0)
 
         # create standard metadata
         #
-        meta = Asset.stdMetadata()
+        meta = asset.stdMetadata()
         for k, v in meta.iteritems():
-            Asset.addMetadata(k, v)
+            asset.addMetadata(k, v)
 
         # Compatibility data
         # This will help other application decide if they can use this asset.
-        # FIXME: versions are hard-coded.
         #
-        prmanVersion = '21.3'
-        Asset.setCompatibility(hostName='Substance Painter',
+        prmanVersion = str(rman_version)
+        asset.setCompatibility(hostName='Substance Painter',
                                hostVersion='2.4',
                                rendererVersion=prmanVersion)
-        msg('  + compatibility set')
+        DBUG('  + compatibility set')
 
         # create nodes
         # start by adding a root node
         #
         rootNode = label + '_Material'
-        Asset.addNode(rootNode, 'shadingEngine', 'root', 'shadingEngine')
+        asset.addNode(rootNode, 'shadingEngine', 'root', 'shadingEngine')
         pdict = {'type': 'reference float[]', 'value': None}
-        Asset.addParam(rootNode, 'surfaceShader', pdict)
-        msg('  + Root node: %s' % rootNode)
+        asset.addParam(rootNode, 'surfaceShader', pdict)
+        DBUG('  + Root node: %s' % rootNode)
 
         # add a disney or pixar bxdf
         #
         bxdfNode = label + "_Srf"
-        Asset.addNode(bxdfNode, _bxdf, 'bxdf', _bxdf)
-        msg('  + BxDF node: %s  (%s)' % (rootNode, _bxdf))
+        asset.addNode(bxdfNode, _bxdf, 'bxdf', _bxdf)
+        DBUG('  + BxDF node: %s  (%s)' % (rootNode, _bxdf))
 
         # connect surf to root node
         #
-        Asset.addConnection('%s.outColor' % bxdfNode,
+        asset.addConnection('%s.outColor' % bxdfNode,
                             '%s.surfaceShader' % rootNode)
 
         # build additional nodes if need be.
         #
         if 'graph' in _rules[_bxdf]:
-            msg('  + Create graph nodes...')
+            DBUG('  + Create graph nodes...')
             for nname, ndict in _rules[_bxdf]['graph']['nodes'].iteritems():
                 lname = label + nname
-                Asset.addNode(lname, ndict['nodetype'],
+                asset.addNode(lname, ndict['nodetype'],
                               'pattern', ndict['nodetype'])
-                msg('    |_ %s  (%s)' % (lname, ndict['nodetype']))
+                DBUG('    |_ %s  (%s)' % (lname, ndict['nodetype']))
                 if 'params' in ndict:
                     for pname, pdict in ndict['params'].iteritems():
-                        Asset.addParam(lname, pname, pdict)
-                        msg('       |_ param: %s %s = %s' %
-                            (pdict['type'], pname, pdict['value']))
+                        asset.addParam(lname, pname, pdict)
+                        DBUG('       |_ param: %s %s = %s' %
+                             (pdict['type'], pname, pdict['value']))
 
         # create texture nodes
-        msg('  + Create texture nodes...')
+        DBUG('  + Create texture nodes...')
         chanNodes = {}
-        for ch, fpath in chans.iteritems():
-            nodeName = "%s_%s_tex" % (label, ch)
-            chanNodes[ch] = nodeName
-            if ch not in _bump:
-                Asset.addNode(nodeName, 'PxrTexture', 'pattern', 'PxrTexture')
+        for chan, fpath in chans.iteritems():
+            nodeName = "%s_%s_tex" % (label, chan)
+            chanNodes[chan] = nodeName
+            if chan not in _bump:
+                asset.addNode(nodeName, 'PxrTexture', 'pattern', 'PxrTexture')
                 pdict = {'type': 'string', 'value': fpath}
-                Asset.addParam(nodeName, 'filename', pdict)
+                asset.addParam(nodeName, 'filename', pdict)
                 pdict = {'type': 'int', 'value': 1}
-                Asset.addParam(nodeName, 'linearize', pdict)
+                asset.addParam(nodeName, 'linearize', pdict)
             else:
-                if ch == 'normal':
-                    Asset.addNode(nodeName, 'PxrNormalMap',
+                if chan == 'normal':
+                    asset.addNode(nodeName, 'PxrNormalMap',
                                   'pattern', 'PxrNormalMap')
                     pdict = {'type': 'string', 'value': fpath}
-                    Asset.addParam(nodeName, 'filename', pdict)
+                    asset.addParam(nodeName, 'filename', pdict)
                     pdict = {'type': 'float', 'value': 1.0}
-                    Asset.addParam(nodeName, 'adjustAmount', pdict)
-                elif ch == 'height':
-                    Asset.addNode(nodeName, 'PxrBump', 'pattern', 'PxrBump')
+                    asset.addParam(nodeName, 'adjustAmount', pdict)
+                elif chan == 'height':
+                    asset.addNode(nodeName, 'PxrBump', 'pattern', 'PxrBump')
                     pdict = {'type': 'string', 'value': fpath}
-                    Asset.addParam(nodeName, 'filename', pdict)
+                    asset.addParam(nodeName, 'filename', pdict)
                     pdict = {'type': 'float', 'value': 1.0}
-                    Asset.addParam(nodeName, 'adjustAmount', pdict)
+                    asset.addParam(nodeName, 'adjustAmount', pdict)
                 else:
-                    msg('    ! wow: %s' % ch)
-            msg('    |_ %s' % nodeName)
+                    DBUG('    ! wow: %s' % chan)
+            DBUG('    |_ %s' % nodeName)
 
         # make direct connections
         #
-        msg('  + Direct connections...')
-        for ch in chans:
+        DBUG('  + Direct connections...')
+        for chan in chans:
             src = None
-            dstType = _rules[_bxdf]['mapping'][ch]['type']
-            dstParam = _rules[_bxdf]['mapping'][ch]['param']
+            dstType = _rules[_bxdf]['mapping'][chan]['type']
+            dstParam = _rules[_bxdf]['mapping'][chan]['param']
             if dstType == 'normal':
-                src = '%s.resultN' % (chanNodes[ch])
+                src = '%s.resultN' % (chanNodes[chan])
             elif dstType == 'color':
-                src = '%s.resultRGB' % (chanNodes[ch])
+                src = '%s.resultRGB' % (chanNodes[chan])
             elif dstType == 'float':
-                src = '%s.resultR' % (chanNodes[ch])
+                src = '%s.resultR' % (chanNodes[chan])
             else:
                 # don't create a connection
                 if dstParam != 'graph':
                     # connections with a graph type will be handled later, so
                     # we don't warn in that case.
-                    print 'WARNING: Not connecting: %s' % ch
+                    print 'WARNING: Not connecting: %s' % chan
                 continue
             if dstParam == 'graph':
                 continue
             dst = '%s.%s' % (bxdfNode, dstParam)
-            Asset.addConnection(src, dst)
-            msg('    |_ connect: %s -> %s' % (src, dst))
+            asset.addConnection(src, dst)
+            DBUG('    |_ connect: %s -> %s' % (src, dst))
             # also tag the bxdf param as connected
             pdict = {'type': 'reference ' + dstType, 'value': None}
-            Asset.addParam(bxdfNode, dstParam, pdict)
-            msg('       |_ param: %s %s -> %s' % (pdict['type'],
-                                                  dstParam,
-                                                  pdict['value']))
+            asset.addParam(bxdfNode, dstParam, pdict)
+            DBUG('       |_ param: %s %s -> %s' % (pdict['type'],
+                                                   dstParam,
+                                                   pdict['value']))
 
         # make graph connections
         #
         if 'graph' in _rules[_bxdf]:
             if 'connections' in _rules[_bxdf]['graph']:
-                msg('  + Connect graph nodes...')
+                DBUG('  + Connect graph nodes...')
                 for con in _rules[_bxdf]['graph']['connections']:
 
                     src_node = con['src']['node']
@@ -355,24 +384,24 @@ def export():
                     if not dst_node.startswith(label):
                         dst_node = label + dst_node
                     dst = '%s.%s' % (dst_node, con['dst']['param'])
-                    Asset.addConnection(src, dst)
-                    msg('    |_ connect: %s -> %s' % (src, dst))
+                    asset.addConnection(src, dst)
+                    DBUG('    |_ connect: %s -> %s' % (src, dst))
                     # mark param as a connected
                     dstType = con['dst']['type']
                     pdict = {'type': 'reference %s' % dstType, 'value': None}
-                    Asset.addParam(dst_node, con['dst']['param'], pdict)
-                    msg('       |_ param: %s %s = %s' % (pdict['type'],
-                                                         con['dst']['param'],
-                                                         pdict['value']))
+                    asset.addParam(dst_node, con['dst']['param'], pdict)
+                    DBUG('       |_ param: %s %s = %s' % (pdict['type'],
+                                                          con['dst']['param'],
+                                                          pdict['value']))
 
         # save asset
         #
-        msg('  + ready to save: %s' % assetJsonPath)
+        DBUG('  + ready to save: %s' % assetJsonPath)
         try:
-            Asset.save(assetJsonPath, False)
+            asset.save(assetJsonPath, False)
         except:
-            err()
-            raise Exception
+            XCPT('Saving the asset failed !')
+            raise
 
         # mark this asset as ready to be moved
         #
@@ -381,60 +410,52 @@ def export():
     # move assets to the requested location
     #
     dst = jsonDict['saveTo']
-    for asset in assetList:
+    for item in assetList:
         # if the asset already exists in the destination
         # location, we need to move it first.
-        dstAsset = os.path.join(dst, os.path.basename(asset))
+        dstAsset = os.path.join(dst, os.path.basename(item))
         if os.path.exists(dstAsset):
             try:
                 os.rename(dstAsset, dstAsset + '_old')
-            except:
-                msg('WARNING: Could not rename asset to %s_old' % dstAsset)
-                err()
+            except (OSError, IOError):
+                XCPT('Could not rename asset to %s_old' % dstAsset)
                 continue
             else:
                 shutil.rmtree(dstAsset + '_old', ignore_errors=False)
         try:
-            shutil.move(asset, dst)
-        except:
-            msg('WARNING: Could not copy asset to %s' % dst)
-            err()
+            shutil.move(item, dst)
+        except (OSError, IOError):
+            XCPT('WARNING: Could not copy asset to %s' % dst)
+
 
     # clean-up intermediate files
-    if True:
-        for mat in matArray:
-            for ch, fpath in chans.iteritems():
-                if not os.path.exists(fpath):
-                    print 'cleanup: file not found: %s' % fpath
-                    continue
-                try:
-                    os.remove(fpath)
-                except:
-                    msg('Cleanup failed: %s' % fpath)
-                    err()
-                else:
-                    msg('Cleanup: %s' % fpath)
-
-        if os.path.exists(jsonFile):
+    for mat in matArray:
+        for chan, fpath in chans.iteritems():
+            if not os.path.exists(fpath):
+                print 'cleanup: file not found: %s' % fpath
+                continue
             try:
-                os.remove(jsonFile)
-            except:
-                msg('Cleanup failed: %s' % jsonFile)
-                err()
+                os.remove(fpath)
+            except (OSError, IOError):
+                XCPT('Cleanup failed: %s' % fpath)
             else:
-                msg('Cleanup: %s' % jsonFile)
-    else:
-        msg('skipped cleanup')
+                DBUG('Cleanup: %s' % fpath)
 
-    msg('RenderMan : Done !')
+    # if os.path.exists(jsonFile):
+    #     try:
+    #         os.remove(jsonFile)
+    #     except (OSError, IOError):
+    #         XCPT('Cleanup failed: %s' % jsonFile)
+    #     else:
+    #         DBUG('Cleanup: %s' % jsonFile)
+
+    INFO('RenderMan : Done !')
 
 
 # main
 
 try:
     export()
-except:
-    err()
-    exitWithError()
-else:
-    exitWithSuccess()
+except Exception:
+    XCPT('Export failed')
+sys.exit(0)
