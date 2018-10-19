@@ -25,13 +25,57 @@
                 "param": "emitColor",
                 "type": "color"
             },
-            "height": {
-                "param": "bumpNormal",
-                "type": "normal"
-            },
             "normal": {
                 "param": "bumpNormal",
                 "type": "normal"
+            }
+        },
+        "settings": {
+            "basecolor": {
+                "linearize": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "specular": {
+                "linearize": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "roughness": {
+                "linearize": {
+                    "type": "int",
+                    "value": 0
+                }
+            },
+            "metallic": {
+                "linearize": {
+                    "type": "int",
+                    "value": 0
+                }
+            },
+            "opacity": {
+                "linearize": {
+                    "type": "int",
+                    "value": 0
+                }
+            },
+            "emissive": {
+                "linearize": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "normal": {
+                "orientation": {
+                    "type": "int",
+                    "value": 1
+                },
+                "adjustAmount": {
+                    "type": "float",
+                    "value": 1.0
+                }
             }
         }
     },
@@ -60,10 +104,6 @@
             "emissive": {
                 "param": "glowColor",
                 "type": "color"
-            },
-            "height": {
-                "param": "bumpNormal",
-                "type": "normal"
             },
             "normal": {
                 "param": "bumpNormal",
@@ -252,6 +292,60 @@
                     }
                 }
             ]
+        },
+        "settings": {
+            "bxdf": {
+                "specularModelType": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "basecolor": {
+                "linearize": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "specular": {
+                "linearize": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "roughness": {
+                "linearize": {
+                    "type": "int",
+                    "value": 0
+                }
+            },
+            "metallic": {
+                "linearize": {
+                    "type": "int",
+                    "value": 0
+                }
+            },
+            "opacity": {
+                "linearize": {
+                    "type": "int",
+                    "value": 0
+                }
+            },
+            "emissive": {
+                "linearize": {
+                    "type": "int",
+                    "value": 1
+                }
+            },
+            "normal": {
+                "orientation": {
+                    "type": "int",
+                    "value": 1
+                },
+                "adjustAmount": {
+                    "type": "float",
+                    "value": 1.0
+                }
+            }
         }
     }
 }

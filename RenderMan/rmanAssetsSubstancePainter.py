@@ -34,6 +34,7 @@ import re
 import json
 import shutil
 import logging
+import getpass
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 LOGFILE = os.path.join(THIS_DIR, 'rfsp_log.txt')
@@ -171,6 +172,33 @@ def setup_environment(jsonDict):
     return rman_version
 
 
+def set_params(settings_dict, chan, node_name, asset):
+    # The bxdf may need specific settings to match Substance Painter
+    try:
+        params = settings_dict[chan]
+    except (KeyError, TypeError):
+        pass
+    else:
+        for pname, pdict in params.iteritems():
+            asset.addParam(node_name, pname, pdict)
+            DBUG('       |_ param: %s %s = %s', pdict['type'], pname, pdict['value'])
+
+
+def add_texture_node(asset, node_name, ntype, filepath):
+    asset.addNode(node_name, ntype, 'pattern', ntype)
+    pdict = {'type': 'string', 'value': filepath}
+    asset.addParam(node_name, 'filename', pdict)
+
+
+def set_metadata(asset, mat_dict):
+    meta = asset.stdMetadata()
+    meta['author'] = getpass.getuser()
+    meta['description'] = 'Created by RenderMan for Substance Painter 0.2.2'
+    meta['resolution'] = ' x '.join(mat_dict['resolution'].split(','))
+    for k, v in meta.iteritems():
+        asset.addMetadata(k, v)
+
+
 def export():
     """Export a RenderManAsset package based on  a json file.
     """
@@ -195,12 +223,16 @@ def export():
     DBUG('OK: imported rmanAssets')
 
     # constants
-    _bump = ['height', 'normal']
+    _bump = ('height', 'normal')
     slotsFile = FilePath(os.path.dirname(os.path.realpath(__file__))).join('rules.json')
-    _rules = readJson(slotsFile)
+    rules = readJson(slotsFile)
     DBUG('OK: rules read')
 
     _bxdf = jsonDict['bxdf']
+    bxdf_rules = rules[_bxdf]
+    mappings = bxdf_rules['mapping']
+    graph = bxdf_rules.get('graph', None)
+    settings = bxdf_rules.get('settings', None)
 
     # we save the assets to SP's export directory, because we know it is writable.
     # We will move them to the requested location later.
@@ -213,12 +245,12 @@ def export():
     for mat in matArray:
         label = '%s_%s' % (scene, mat['textureSet'])
         chans = mat['channels']
-        DBUG('+ Exporting %s' % label)
+        DBUG('+ Exporting %s', label)
 
         assetPath = exportPath.join(label + '.rma')
-        DBUG('  + assetPath %s' % assetPath)
+        DBUG('  + assetPath %s', assetPath)
         assetJsonPath = assetPath.join('asset.json')
-        DBUG('  + assetJsonPath %s' % assetJsonPath)
+        DBUG('  + assetJsonPath %s', assetJsonPath)
 
         # create asset directory
         if not assetPath.exists():
@@ -227,9 +259,9 @@ def export():
             except (OSError, IOError):
                 XCPT('Asset directory could not be created !')
                 sys.exit(0)
-            DBUG('  + Created dir: %s' % assetPath)
+            DBUG('  + Created dir: %s', assetPath)
         else:
-            DBUG('  + dir exists: %s' % assetPath)
+            DBUG('  + dir exists: %s', assetPath)
 
         # create asset
         try:
@@ -240,16 +272,14 @@ def export():
 
         # create standard metadata
         #
-        meta = asset.stdMetadata()
-        for k, v in meta.iteritems():
-            asset.addMetadata(k, v)
+        set_metadata(asset, mat)
 
         # Compatibility data
         # This will help other application decide if they can use this asset.
         #
         prmanVersion = str(rman_version)
         asset.setCompatibility(hostName='Substance Painter',
-                               hostVersion='2.4',
+                               hostVersion=jsonDict['sp_version'],
                                rendererVersion=prmanVersion)
         DBUG('  + compatibility set')
 
@@ -260,13 +290,16 @@ def export():
         asset.addNode(rootNode, 'shadingEngine', 'root', 'shadingEngine')
         pdict = {'type': 'reference float[]', 'value': None}
         asset.addParam(rootNode, 'surfaceShader', pdict)
-        DBUG('  + Root node: %s' % rootNode)
+        DBUG('  + Root node: %s', rootNode)
 
         # add a disney or pixar bxdf
         #
         bxdfNode = label + "_Srf"
         asset.addNode(bxdfNode, _bxdf, 'bxdf', _bxdf)
-        DBUG('  + BxDF node: %s  (%s)' % (rootNode, _bxdf))
+        DBUG('  + BxDF node: %s  (%s)', (rootNode, _bxdf))
+
+        # The bxdf may need specific settings to match Substance Painter
+        set_params(settings, 'bxdf', bxdfNode, asset)
 
         # connect surf to root node
         #
@@ -275,9 +308,9 @@ def export():
 
         # build additional nodes if need be.
         #
-        if 'graph' in _rules[_bxdf]:
+        if graph:
             DBUG('  + Create graph nodes...')
-            for nname, ndict in _rules[_bxdf]['graph']['nodes'].iteritems():
+            for nname, ndict in graph['nodes'].iteritems():
                 lname = label + nname
                 asset.addNode(lname, ndict['nodetype'],
                               'pattern', ndict['nodetype'])
@@ -293,38 +326,27 @@ def export():
         chanNodes = {}
         for chan, fpath in chans.iteritems():
             nodeName = "%s_%s_tex" % (label, chan)
+            DBUG('    |_ %s' % nodeName)
             chanNodes[chan] = nodeName
             if chan not in _bump:
-                asset.addNode(nodeName, 'PxrTexture', 'pattern', 'PxrTexture')
-                pdict = {'type': 'string', 'value': fpath}
-                asset.addParam(nodeName, 'filename', pdict)
-                pdict = {'type': 'int', 'value': 1}
-                asset.addParam(nodeName, 'linearize', pdict)
+                add_texture_node(asset, nodeName, 'PxrTexture', fpath)
+                set_params(settings, chan, nodeName, asset)
             else:
                 if chan == 'normal':
-                    asset.addNode(nodeName, 'PxrNormalMap',
-                                  'pattern', 'PxrNormalMap')
-                    pdict = {'type': 'string', 'value': fpath}
-                    asset.addParam(nodeName, 'filename', pdict)
-                    pdict = {'type': 'float', 'value': 1.0}
-                    asset.addParam(nodeName, 'adjustAmount', pdict)
+                    add_texture_node(asset, nodeName, 'PxrNormalMap', fpath)
                 elif chan == 'height':
-                    asset.addNode(nodeName, 'PxrBump', 'pattern', 'PxrBump')
-                    pdict = {'type': 'string', 'value': fpath}
-                    asset.addParam(nodeName, 'filename', pdict)
-                    pdict = {'type': 'float', 'value': 1.0}
-                    asset.addParam(nodeName, 'adjustAmount', pdict)
+                    add_texture_node(asset, nodeName, 'PxrBump', fpath)
                 else:
                     DBUG('    ! wow: %s' % chan)
-            DBUG('    |_ %s' % nodeName)
+                set_params(settings, chan, nodeName, asset)
 
         # make direct connections
         #
         DBUG('  + Direct connections...')
         for chan in chans:
             src = None
-            dstType = _rules[_bxdf]['mapping'][chan]['type']
-            dstParam = _rules[_bxdf]['mapping'][chan]['param']
+            dstType = mappings[chan]['type']
+            dstParam = mappings[chan]['param']
             if dstType == 'normal':
                 src = '%s.resultN' % (chanNodes[chan])
             elif dstType == 'color':
@@ -352,10 +374,10 @@ def export():
 
         # make graph connections
         #
-        if 'graph' in _rules[_bxdf]:
-            if 'connections' in _rules[_bxdf]['graph']:
+        if graph:
+            if 'connections' in graph:
                 DBUG('  + Connect graph nodes...')
-                for con in _rules[_bxdf]['graph']['connections']:
+                for con in graph['connections']:
 
                     src_node = con['src']['node']
                     src_ch = None
@@ -441,13 +463,13 @@ def export():
             else:
                 DBUG('Cleanup: %s' % fpath)
 
-    # if os.path.exists(jsonFile):
-    #     try:
-    #         os.remove(jsonFile)
-    #     except (OSError, IOError):
-    #         XCPT('Cleanup failed: %s' % jsonFile)
-    #     else:
-    #         DBUG('Cleanup: %s' % jsonFile)
+    if os.path.exists(jsonFile):
+        try:
+            os.remove(jsonFile)
+        except (OSError, IOError):
+            XCPT('Cleanup failed: %s' % jsonFile)
+        else:
+            DBUG('Cleanup: %s' % jsonFile)
 
     INFO('RenderMan : Done !')
 

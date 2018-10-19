@@ -115,6 +115,7 @@ function exportAssets(bxdf) {
     // store env vars
     //
     fileContent += tab + "\"scene\": \"" + scene_name + "\",\n"
+    fileContent += tab + "\"sp_version\": \"" + alg.version.painter + "\",\n"
     fileContent += tab + "\"RMANTREE\": \"" + jsonPath(alg.settings.value("RMANTREE")) + "\",\n"
     fileContent += tab + "\"RMSTREE\": \"" + jsonPath(alg.settings.value("RMSTREE")) + "\",\n"
     fileContent += tab + "\"bxdf\": \"" + bxdf + "\",\n"
@@ -123,10 +124,13 @@ function exportAssets(bxdf) {
 
     // Parse all materials (texture sets)
     //
-    for (matIdx = 0; matIdx < document.materials.length; matIdx++) {
+    for (matIdx = 0; matIdx < document.materials.length; matIdx++)
+    {
         var material = document.materials[matIdx].name
         fileContent += tab2 + "{\n"
         fileContent += tab3 + "\"textureSet\": \"" + material + "\",\n"
+        var resolution = alg.mapexport.textureSetResolution(material)
+        fileContent += tab3 + "\"resolution\": \"" + resolution + "\",\n"
         fileContent += tab3 + "\"channels\": {\n"
         // alg.log.info("RenderMan: Texture Set \"" + material + "\" : ")
 
