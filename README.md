@@ -66,6 +66,23 @@ This plugin will NOT work without the following software:
 
 ## Release notes
 
+### 0.2.2
+
+* new
+  * Added metadata to the asset files: user, description, resolution.
+  * Compatibility chunk holds Substance Painter version.
+
+* Fixed
+  * better match with PxrSurface. Updated rules.json to fix a number of issues:
+    * roughness should not be linearized
+    * metallicity should not be linearized
+    * normal map should use directx orientation
+  * exported normal map contains mesh normals + bump + normal map.
+
+* code
+  * Added a new "settings" section to rules.json to set node param values in the shading graph.
+  * Some refactoring
+
 ### 0.2.1
 
 * Fixed
