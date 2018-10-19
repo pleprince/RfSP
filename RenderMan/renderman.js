@@ -75,6 +75,7 @@ function exportAssets(bxdf) {
         return
     }
 
+    alg.log.info("\n\n\n\n")
     var toks = alg.project.url().split('/')
     var scene_name = toks[toks.length - 1]
     scene_name = scene_name.split(".")[0]
@@ -130,9 +131,17 @@ function exportAssets(bxdf) {
         // alg.log.info("RenderMan: Texture Set \"" + material + "\" : ")
 
         var numChannels = document.materials[matIdx].stacks[0].channels.length
-        for (channelIdx = 0; channelIdx < numChannels; channelIdx++) {
+        for (channelIdx = 0; channelIdx < numChannels; channelIdx++)
+        {
             var thisChannel = document.materials[matIdx].stacks[0].channels[channelIdx]
             // alg.log.info("RenderMan:   | " + thisChannel)
+
+            // Skip the height channel: we prefer normal maps.
+            if (thisChannel == "height")
+            {
+                // alg.log.info("RenderMan:   |_ skip")
+                continue
+            }
 
             var output = exportPath + material + "_" + thisChannel + ext
 
@@ -140,7 +149,16 @@ function exportAssets(bxdf) {
             materials[0] = material
             materials[1] = thisChannel
 
-            alg.mapexport.save(materials, output)
+            // Make sure the normals are correctly configured to combine
+            // mesh + height + normal.
+            if (thisChannel == "normal")
+            {
+                alg.mapexport.saveConvertedMap([material], "normal_directx", output)
+            }
+            else
+            {
+                alg.mapexport.save(materials, output)
+            }
             // alg.log.info("RenderMan:   |_ Exported : " + output)
 
             // Prepare Data for json file
@@ -170,7 +188,8 @@ function exportAssets(bxdf) {
         jsonFile.close()
 
         // Call python
-        // FIXME: we should probably just catch exceptions and print the log on error.
+        // FIXME: we should probably just catch exceptions and print the log
+        // on error.
         //
         var fpath = "\"" + jsonFilePath + "\""
         var result = alg.subprocess.check_output([pyBin, script, fpath])
