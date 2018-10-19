@@ -328,17 +328,13 @@ def export():
             nodeName = "%s_%s_tex" % (label, chan)
             DBUG('    |_ %s' % nodeName)
             chanNodes[chan] = nodeName
-            if chan not in _bump:
-                add_texture_node(asset, nodeName, 'PxrTexture', fpath)
-                set_params(settings, chan, nodeName, asset)
+            if chan == 'normal':
+                add_texture_node(asset, nodeName, 'PxrNormalMap', fpath)
+            elif chan == 'height':
+                add_texture_node(asset, nodeName, 'PxrBump', fpath)
             else:
-                if chan == 'normal':
-                    add_texture_node(asset, nodeName, 'PxrNormalMap', fpath)
-                elif chan == 'height':
-                    add_texture_node(asset, nodeName, 'PxrBump', fpath)
-                else:
-                    DBUG('    ! wow: %s' % chan)
-                set_params(settings, chan, nodeName, asset)
+                add_texture_node(asset, nodeName, 'PxrTexture', fpath)
+            set_params(settings, chan, nodeName, asset)
 
         # make direct connections
         #
