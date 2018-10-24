@@ -63,6 +63,23 @@ function checkPrefs() {
 }
 
 
+function isUDIMProject(document)
+{
+    var isUDIM = true
+    var udimPat = '1[0-9]{3}'
+    for (var matIdx = 0; matIdx < document.materials.length; matIdx++)
+    {
+        if (document.materials[matIdx].name.match(udimPat) == null)
+        {
+            isUDIM = false
+            break
+        }
+    }
+    alg.log.info('UDIM = ' + isUDIM)
+    return isUDIM
+}
+
+
 // FIXME: the bxdf param is currently ignored.
 
 function exportAssets(bxdf) {
@@ -110,29 +127,37 @@ function exportAssets(bxdf) {
     var matIdx = 0
     var channelIdx = 0
     var document = alg.mapexport.documentStructure()
-    var fileContent = "{\n"
+
+    // check if this is a UDIM set
+    var isUDIM = isUDIMProject(document)
 
     // store env vars
     //
-    fileContent += tab + "\"scene\": \"" + scene_name + "\",\n"
-    fileContent += tab + "\"sp_version\": \"" + alg.version.painter + "\",\n"
-    fileContent += tab + "\"RMANTREE\": \"" + jsonPath(alg.settings.value("RMANTREE")) + "\",\n"
-    fileContent += tab + "\"RMSTREE\": \"" + jsonPath(alg.settings.value("RMSTREE")) + "\",\n"
-    fileContent += tab + "\"bxdf\": \"" + bxdf + "\",\n"
-    fileContent += tab + "\"saveTo\": \"" + jsonPath(alg.settings.value("saveTo")) + "\",\n"
-    fileContent += tab + "\"document\": [\n"
+    var obj = {
+        scene: scene_name,
+        sp_version: alg.version.painter,
+        RMANTREE: jsonPath(alg.settings.value("RMANTREE")),
+        RMSTREE: jsonPath(alg.settings.value("RMSTREE")),
+        bxdf: bxdf,
+        udim: isUDIM,
+        saveTo: jsonPath(alg.settings.value("saveTo")),
+        document: []
+    }
 
     // Parse all materials (texture sets)
     //
+    var mobj = null
     for (matIdx = 0; matIdx < document.materials.length; matIdx++)
     {
         var material = document.materials[matIdx].name
-        fileContent += tab2 + "{\n"
-        fileContent += tab3 + "\"textureSet\": \"" + material + "\",\n"
-        var resolution = alg.mapexport.textureSetResolution(material)
-        fileContent += tab3 + "\"resolution\": \"" + resolution + "\",\n"
-        fileContent += tab3 + "\"channels\": {\n"
-        // alg.log.info("RenderMan: Texture Set \"" + material + "\" : ")
+        if (!isUDIM || matIdx == 0)
+        {
+            mobj = {
+                textureSet: isUDIM ? "UDIM" : material,
+                resolution: alg.mapexport.textureSetResolution(material),
+                channels: {}
+            }
+        }
 
         var numChannels = document.materials[matIdx].stacks[0].channels.length
         for (channelIdx = 0; channelIdx < numChannels; channelIdx++)
@@ -147,57 +172,71 @@ function exportAssets(bxdf) {
                 continue
             }
 
-            var output = exportPath + material + "_" + thisChannel + ext
+            var output = exportPath
+            if (isUDIM)
+                output += thisChannel + "." + material + ext
+            else
+                output += material + "_" + thisChannel + ext
 
-            var materials = []
-            materials[0] = material
-            materials[1] = thisChannel
-
-            // Make sure the normals are correctly configured to combine
-            // mesh + height + normal.
+            var t0 = new Date().getTime()
             if (thisChannel == "normal")
             {
+                // Make sure the normals are correctly configured to combine
+                // mesh + height + normal.
                 alg.mapexport.saveConvertedMap([material], "normal_directx", output)
             }
             else
             {
-                alg.mapexport.save(materials, output)
+                // regular map export
+                alg.mapexport.save([material, thisChannel], output)
             }
-            // alg.log.info("RenderMan:   |_ Exported : " + output)
+            var t1 = new Date().getTime()
+            alg.log.info("RenderMan:   |_ Exported in " + ((t1-t0)/1000.0).toFixed(2) + " sec.: " + output)
 
-            // Prepare Data for json file
-            //
-            fileContent += tab4 + "\"" + thisChannel + "\": \"" + jsonPath(output) + "\""
-            if (channelIdx < numChannels - 1)
-                fileContent += ",\n"
-            else
-                fileContent += "\n"
+            try {
+                mobj.channels[thisChannel].push(jsonPath(output))
+            } catch (error) {
+                mobj.channels[thisChannel] = [jsonPath(output)]
+            }
         }
-        if (matIdx < document.materials.length - 1)
-            fileContent += tab3 + "}\n" + tab2 + "},\n"
-        else
-            fileContent += tab3 + "}\n" + tab2 + "}\n"
+
+        if (!isUDIM || matIdx == 0)
+        {
+            obj.document.push(mobj)
+        }
     }
-    fileContent += tab + "]\n}\n"
 
     // Write json file and export
     //
-    if (fileContent.length > 0) {
+    if (obj != null)
+    {
         alg.log.info("RenderMan: Writing " + jsonFilePath + "...")
 
         // write json file needed by the python script
         //
         var jsonFile = alg.fileIO.open(jsonFilePath, "w")
-        jsonFile.write(fileContent)
+        jsonFile.write(JSON.stringify(obj, null, 4))
         jsonFile.close()
 
         // Call python
         // FIXME: we should probably just catch exceptions and print the log
         // on error.
         //
-        var fpath = "\"" + jsonFilePath + "\""
-        var result = alg.subprocess.check_output([pyBin, script, fpath])
-        alg.log.info("RenderMan: Python : " + result)
+        alg.log.info("RenderMan: Launching " + script + "...")
+        try
+        {
+            var fpath = "\"" + jsonFilePath + "\""
+            var result = alg.subprocess.check_output([pyBin, script, fpath])
+            var lines = result.split(/[\r\n]+/g)
+            for (var i in lines)
+            {
+                alg.log.info("RenderMan:          " + lines[i])
+            }
+        }
+        catch (err)
+        {
+            alg.log.error('ERROR: ' + err)
+        }
     }
     else {
         alg.log.error("RenderMan: Nothing to export !")

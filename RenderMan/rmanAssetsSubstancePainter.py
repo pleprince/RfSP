@@ -35,6 +35,7 @@ import json
 import shutil
 import logging
 import getpass
+import subprocess
 
 THIS_DIR = os.path.dirname(os.path.realpath(__file__))
 LOGFILE = os.path.join(THIS_DIR, 'rfsp_log.txt')
@@ -47,6 +48,8 @@ INFO = logging.info
 WARN = logging.warning
 ERR = logging.error
 XCPT = logging.exception
+IMG_EXTS = ['.png', '.jpg', '.exr']
+TEX_EXTS = ['.tex', '.tx', '.txr']
 
 
 class FilePath(unicode):
@@ -188,15 +191,78 @@ def add_texture_node(asset, node_name, ntype, filepath):
     asset.addNode(node_name, ntype, 'pattern', ntype)
     pdict = {'type': 'string', 'value': filepath}
     asset.addParam(node_name, 'filename', pdict)
+    if '_MAPID_' in filepath:
+        asset.addParam(node_name, 'atlasStyle', {'type': 'int', 'value': 1})
 
 
 def set_metadata(asset, mat_dict):
     meta = asset.stdMetadata()
     meta['author'] = getpass.getuser()
     meta['description'] = 'Created by RenderMan for Substance Painter 0.2.2'
-    meta['resolution'] = ' x '.join(mat_dict['resolution'].split(','))
+    meta['resolution'] = '%d x %d' % (mat_dict['resolution'][0],
+                                      mat_dict['resolution'][1])
     for k, v in meta.iteritems():
         asset.addMetadata(k, v)
+
+
+def startupInfo():
+    """Returns a Windows-only object to make sure tasks launched through
+    subprocess don't open a cmd window.
+
+    Returns:
+        subprocess.STARTUPINFO -- the properly configured object if we are on
+                                  Windows, otherwise None
+    """
+    startupinfo = None
+    if os.name is 'nt':
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+    return startupinfo
+
+
+def app(name):
+    if os.name is 'nt':
+        return (name + '.exe')
+    return name
+
+
+def txmake(is_udim, asset_path, fpath_list):
+
+    rmantree = FilePath(os.environ['RMANTREE'])
+    binary = rmantree.join('bin', app('txmake')).osPath()
+    cmd = [binary]
+    if is_udim:
+        cmd += ['-resize', 'round-',
+                '-mode', 'clamp',
+                '-format', 'pixar',
+                '-compression', 'lossless',
+                '-newer',
+                'src', 'dst']
+    else:
+        cmd += ['-resize', 'round-',
+                '-mode', 'periodic',
+                '-format', 'pixar',
+                '-compression', 'lossless',
+                '-newer',
+                'src', 'dst']
+    for img in fpath_list:
+        cmd[-2] = FilePath(img).osPath()
+        dirname, filename = os.path.split(img)
+        texfile = os.path.splitext(filename)[0] + '.tex'
+        cmd[-1] = asset_path.join(texfile).osPath()
+        DBUG('       |_ txmake : %s -> %s', cmd[-2], cmd[-1])
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             startupinfo=startupInfo())
+        p.wait()
+
+    # return a local path to the tex file.
+    dirname, filename = os.path.split(fpath_list[0])
+    fname, fext = os.path.splitext(filename)
+    asset_file_ref = FilePath(dirname).join(fname + '.tex')
+    if is_udim:
+        asset_file_ref = re.sub(r'1\d{3}', '_MAPID_', asset_file_ref)
+    return asset_file_ref
 
 
 def export():
@@ -233,6 +299,7 @@ def export():
     mappings = bxdf_rules['mapping']
     graph = bxdf_rules.get('graph', None)
     settings = bxdf_rules.get('settings', None)
+    is_udim = jsonDict['udim']
 
     # we save the assets to SP's export directory, because we know it is writable.
     # We will move them to the requested location later.
@@ -243,7 +310,9 @@ def export():
     scene = jsonDict['scene']
     matArray = jsonDict['document']
     for mat in matArray:
-        label = '%s_%s' % (scene, mat['textureSet'])
+        label = scene
+        if not is_udim:
+            label = '%s_%s' % (scene, mat['textureSet'])
         chans = mat['channels']
         DBUG('+ Exporting %s', label)
 
@@ -324,10 +393,11 @@ def export():
         # create texture nodes
         DBUG('  + Create texture nodes...')
         chanNodes = {}
-        for chan, fpath in chans.iteritems():
+        for chan, fpath_list in chans.iteritems():
             nodeName = "%s_%s_tex" % (label, chan)
             DBUG('    |_ %s' % nodeName)
             chanNodes[chan] = nodeName
+            fpath = txmake(is_udim, assetPath, fpath_list)
             if chan == 'normal':
                 add_texture_node(asset, nodeName, 'PxrNormalMap', fpath)
             elif chan == 'height':
@@ -448,16 +518,17 @@ def export():
 
     # clean-up intermediate files
     for mat in matArray:
-        for chan, fpath in chans.iteritems():
-            if not os.path.exists(fpath):
-                print 'cleanup: file not found: %s' % fpath
-                continue
-            try:
-                os.remove(fpath)
-            except (OSError, IOError):
-                XCPT('Cleanup failed: %s' % fpath)
-            else:
-                DBUG('Cleanup: %s' % fpath)
+        for chan, fpath_list in chans.iteritems():
+            for fpath in fpath_list:
+                if not os.path.exists(fpath):
+                    print 'cleanup: file not found: %s' % fpath
+                    continue
+                try:
+                    os.remove(fpath)
+                except (OSError, IOError):
+                    XCPT('Cleanup failed: %s' % fpath)
+                else:
+                    DBUG('Cleanup: %s' % fpath)
 
     if os.path.exists(jsonFile):
         try:
