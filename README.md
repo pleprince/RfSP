@@ -66,6 +66,15 @@ This plugin will NOT work without the following software:
 
 ## Release notes
 
+### 0.3.0
+
+* **new**
+  * UDIM support
+  * The export code converts SP images to RenderMan textures
+
+* **code**
+  * Refactored javascript json export.
+
 ### 0.2.2
 
 * new

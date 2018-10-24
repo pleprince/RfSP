@@ -198,7 +198,7 @@ def add_texture_node(asset, node_name, ntype, filepath):
 def set_metadata(asset, mat_dict):
     meta = asset.stdMetadata()
     meta['author'] = getpass.getuser()
-    meta['description'] = 'Created by RenderMan for Substance Painter 0.2.2'
+    meta['description'] = 'Created by RenderMan for Substance Painter 0.3.0'
     meta['resolution'] = '%d x %d' % (mat_dict['resolution'][0],
                                       mat_dict['resolution'][1])
     for k, v in meta.iteritems():
