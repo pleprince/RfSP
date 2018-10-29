@@ -22,7 +22,9 @@ The asset will use the PxrDisney bxdf to re-create the Substance Painter materia
 
 ### ![Alt](RenderMan/icons/PxrSurface.png "PxrSurface") : Export to PxrSurface-based material
 
-This is not implemented yet.
+* The Substance Painter project MUST use the pbr-metal-rough shader.
+* normals MUST be in directx format.
+* Opacity is not supported.
 
 ## Requirements
 
