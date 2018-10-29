@@ -17,7 +17,8 @@ RenderManAsset is the format used by the preset browser that was introduced in [
 The asset will use the PxrDisney bxdf to re-create the Substance Painter material. There are limitations though:
 
 * The Substance Painter project MUST use the pbr-metal-rough shader.
-* Opacity is not supported by PxrDisney.
+* normals MUST be in directx format.
+* Opacity is not supported.
 
 ### ![Alt](RenderMan/icons/PxrSurface.png "PxrSurface") : Export to PxrSurface-based material
 
@@ -43,8 +44,6 @@ This plugin will NOT work without the following software:
 
 * No progress indication during export: be patient !
   * It takes time to export the maps and turn them into textures. The plugin will print a message in the log when done.
-* No UDIM support yet.
-* Only tested on OSX.
 
 ## Usage
 
