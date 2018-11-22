@@ -35,7 +35,7 @@ PainterPlugin
 	Component.onCompleted:
 	{
 		// create a toolbar button
-		alg.ui.addToolBarWidget("toolbar.qml");
+		alg.ui.addWidgetToPluginToolBar("toolbar.qml");
 	}
 
 	onConfigure:

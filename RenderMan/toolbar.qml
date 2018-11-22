@@ -32,25 +32,31 @@ import QtQuick.Controls.Styles 1.4
 
 import "renderman.js" as Renderman
 
-Row
+Column
 {
-    spacing: 2
 
     Button
     {
         id: disney
         antialiasing: true
         tooltip: "Export as a PxrDisney Material Preset"
-        width: 30
-        height: 30
+        width: 32
+        height: 32
 
         style: ButtonStyle {
             background: Rectangle {
-                width: 30
-                height: 30
+            implicitWidth: control.width
+            implicitHeight: control.height
+            width: control.width;
+            height: control.height
+            color: control.hovered ?
+              "#262626" :
+              "transparent"
 
                 Image {
-                    source: "icons/PxrDisney.png"
+                    anchors.fill: parent
+                    anchors.margins: 7
+                    source: control.hovered && !control.loading ? "icons/PxrDisney_hover.svg" : "icons/PxrDisney_idle.svg"
                     fillMode: Image.PreserveAspectFit
                     width: control.width; height: control.height
                     mipmap: true
@@ -63,8 +69,8 @@ Row
         {
             try
             {
-                alg.log.info( 'RenderMan: Export PxrDisney-based asset...')
-                Renderman.exportAssets('PxrDisney')
+            alg.log.info( 'RenderMan: Export PxrDisney-based asset...')
+            Renderman.exportAssets('PxrDisney')
             }
             catch(err)
             {
@@ -73,21 +79,29 @@ Row
         }
     }
 
+
     Button
     {
         id: surface
         antialiasing: true
         tooltip: "Export as a PxrSurface Material Preset"
-        width: 30
-        height: 30
+        width: 32
+        height: 32
 
         style: ButtonStyle {
             background: Rectangle {
-                width: 30
-                height: 30
+            implicitWidth: control.width
+            implicitHeight: control.height
+            width: control.width;
+            height: control.height
+            color: control.hovered ?
+              "#262626" :
+              "transparent"
 
                 Image {
-                    source: "icons/PxrSurface.png"
+                anchors.fill: parent
+                    anchors.margins: 7
+                    source: control.hovered && !control.loading ? "icons/PxrSurface_hover.svg" : "icons/PxrSurface_idle.svg"
                     fillMode: Image.PreserveAspectFit
                     width: control.width; height: control.height
                     mipmap: true
