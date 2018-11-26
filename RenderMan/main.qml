@@ -34,8 +34,15 @@ PainterPlugin
 
 	Component.onCompleted:
 	{
-		// create a toolbar button
-		alg.ui.addWidgetToPluginToolBar("toolbar.qml");
+	if(alg.version.painter <= "2017.4.2"){
+		// create a toolbar button for releases prior to 2018.1.0
+		alg.ui.addToolBarWidget("toolbar.qml");
+		}
+
+	else{
+		// create a plugintoolbar button for releases after 2018.1.0
+		alg.ui.addWidgetToPluginToolBar("plugintoolbar.qml");
+		}
 	}
 
 	onConfigure:
