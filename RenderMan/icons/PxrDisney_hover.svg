@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 21.1.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<svg version="1.1"
+	 id="svg2" inkscape:export-filename="/Users/dsisson/Documents/www.renderman.org/icons/stagin/V21_Icons/svg/render_Luxo_flat_grad.png" inkscape:export-xdpi="90.5" inkscape:export-ydpi="90.5" inkscape:version="0.91 r13725" sodipodi:docname="render_PxrDisney.svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd" xmlns:svg="http://www.w3.org/2000/svg"
+	 xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" x="0px" y="0px" viewBox="0 0 32 32"
+	 style="enable-background:new 0 0 32 32;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#76D5FF;}
+	.st1{fill:#0099FF;}
+	.st2{opacity:0.66;fill:url(#path5327_1_);enable-background:new    ;}
+</style>
+<sodipodi:namedview  bordercolor="#666666" borderopacity="0.29803922" id="base" inkscape:bbox-nodes="true" inkscape:bbox-paths="true" inkscape:current-layer="layer2" inkscape:cx="6.1816154" inkscape:cy="12.151616" inkscape:document-units="px" inkscape:object-nodes="true" inkscape:object-paths="true" inkscape:pageopacity="0.0" inkscape:pageshadow="2" inkscape:snap-bbox="true" inkscape:snap-bbox-edge-midpoints="true" inkscape:snap-bbox-midpoints="true" inkscape:snap-global="true" inkscape:snap-intersection-paths="true" inkscape:snap-midpoints="true" inkscape:snap-nodes="true" inkscape:snap-smooth-nodes="true" inkscape:window-height="851" inkscape:window-maximized="1" inkscape:window-width="1440" inkscape:window-x="0" inkscape:window-y="0" inkscape:zoom="10.140625" pagecolor="#ffffff" showgrid="true" units="px">
+	<inkscape:grid  id="grid4417" type="xygrid"></inkscape:grid>
+</sodipodi:namedview>
+<g id="layer2" inkscape:groupmode="layer" inkscape:label="main">
+	
+		<ellipse id="path4419" inkscape:export-xdpi="90.5" inkscape:export-ydpi="90.5" class="st0" cx="15.9" cy="16" rx="14.4" ry="14.4">
+	</ellipse>
+	<path class="st1" d="M16,32C7.3,32,0,25,0,16s7-16,16-16s16,7,16,16S24.7,32,16,32z M16,2.1C8.3,2.1,2,8.3,2,16S8.3,29.9,16,29.9
+		S29.9,23.7,29.9,16S23.6,2.1,16,2.1z"/>
+	<path id="path8123" inkscape:connector-curvature="0" class="st1" d="M9.8,6.2C8.5,6.2,7,6.8,6,7.8C4,9.8,3.8,12.7,5.4,14.2
+		c0.9,0.9,2.2,1.3,3.7,1c-0.6,1.2-1,2.4-1,3.8c0,4.4,3.6,7.9,7.9,7.9l0,0c4.4,0,7.9-3.6,7.9-7.9l0,0c0-1.3-0.3-2.4-0.9-3.6
+		c1.4,0.2,2.6-0.2,3.4-1c1.6-1.6,1.4-4.5-0.6-6.4c-1.9-1.9-4.8-2.1-6.4-0.6c-1,1-1.4,2.5-0.9,4.1c-0.9-0.3-1.7-0.5-2.7-0.5
+		S14,11.2,13,11.6c0.6-1.6,0.3-3.2-0.8-4.3C11.8,6.6,10.9,6.2,9.8,6.2z"/>
+</g>
+<g id="layer3" inkscape:groupmode="layer" inkscape:label="shading">
+	<g id="g8257" transform="translate(-13.818385,3.8483838)">
+	</g>
+	<g id="layer3-1" transform="translate(19,4)" inkscape:label="shading">
+		
+			<radialGradient id="path5327_1_" cx="-69.2249" cy="16.338" r="16" gradientTransform="matrix(-0.4355 1.4286 1.3688 0.4159 -50.6065 97.1903)" gradientUnits="userSpaceOnUse">
+			<stop  offset="0" style="stop-color:#FFFFFF;stop-opacity:0.6039"/>
+			<stop  offset="0.3333" style="stop-color:#FFFFFF;stop-opacity:0"/>
+			<stop  offset="0.7102" style="stop-color:#202020;stop-opacity:0.2"/>
+			<stop  offset="0.9487" style="stop-color:#000000;stop-opacity:0.7"/>
+		</radialGradient>
+		<ellipse id="path5327" class="st2" cx="-3.1" cy="12" rx="15.9" ry="15.9"/>
+	</g>
+</g>
+</svg>

@@ -32,7 +32,7 @@ import QtQuick.Controls.Styles 1.4
 
 import "renderman.js" as Renderman
 
-Row
+Column
 {
 
     Button
@@ -55,7 +55,7 @@ Row
 
                 Image {
                     anchors.fill: parent
-                    anchors.margins: 4
+                    anchors.margins: 7
                     source: control.hovered && !control.loading ? "icons/PxrDisney_hover.svg" : "icons/PxrDisney_idle.svg"
                     fillMode: Image.PreserveAspectFit
                     width: control.width; height: control.height
@@ -100,7 +100,7 @@ Row
 
                 Image {
                 anchors.fill: parent
-                    anchors.margins: 4
+                    anchors.margins: 7
                     source: control.hovered && !control.loading ? "icons/PxrSurface_hover.svg" : "icons/PxrSurface_idle.svg"
                     fillMode: Image.PreserveAspectFit
                     width: control.width; height: control.height
