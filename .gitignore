@@ -101,5 +101,7 @@ ENV/
 .history
 
 log.txt
+rfsp_log.txt
 settings.ini
 .vscode
+.DS_Store
