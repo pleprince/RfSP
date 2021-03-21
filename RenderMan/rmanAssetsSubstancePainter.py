@@ -226,6 +226,13 @@ def app(name):
     return name
 
 
+def convert_to_aces(asset_path, fpath_list):
+    for img in fpath_list:
+        cmd = ['%s/bin/oiiotool' % os.getenv('REZ_OIIO_ROOT')]
+        cmd += [img, '-v', '--runstats', '--info', '--iscolorspace', 'srgb_texture'] # how to determine if channel is color or not?
+        cmd += ['--tocolorspace', 'acescg', '-o', img] #not sure oiiotool allows overwrite?
+
+
 def txmake(is_udim, asset_path, fpath_list):
 
     rmantree = FilePath(os.environ['RMANTREE'])
@@ -397,7 +404,10 @@ def export():
             nodeName = "%s_%s_tex" % (label, chan)
             DBUG('    |_ %s' % nodeName)
             chanNodes[chan] = nodeName
+            convert_to_aces(assetPath, fpath_list)
             fpath = txmake(is_udim, assetPath, fpath_list)
+
+            # for aces conversion, only apply to color images.  how?
             if chan == 'normal':
                 add_texture_node(asset, nodeName, 'PxrNormalMap', fpath)
             elif chan == 'height':
