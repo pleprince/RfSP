@@ -32,6 +32,7 @@ import os.path
 import sys
 import re
 import json
+import glob
 import shutil
 import logging
 import getpass
@@ -152,22 +153,38 @@ def setup_environment(jsonDict):
     Returns:
         tuple -- (rmanAssets, rman_version)
     """
-    rmantree = FilePath(jsonDict['RMANTREE'])
-    rmstree = FilePath(jsonDict['RMSTREE'])
+    # see if these are set as env vars:
+    rmantree = os.getenv('RMANTREE')
+    rmstree = os.getenv('RMSTREE')
+    oiio_home = os.getenv('OIIO_HOME')
+    ocio = os.getenv('OCIO')
 
-    if not rmantree in os.environ:
-        os.environ['RMANTREE'] = rmantree.osPath()
-    if not rmstree in os.environ:
-        os.environ['RMSTREE'] = rmstree.osPath()
+    if rmantree:
+        _rmantree = FilePath(rmantree)
+    else:
+        _rmantree = FilePath(jsonDict['RMANTREE'])
+        os.environ['RMANTREE'] = _rmantree.osPath()
+
+    if rmstree:
+        _rmstree = FilePath(rmstree)
+    else:
+        _rmstree = FilePath(jsonDict['RMSTREE'])
+        os.environ['RMSTREE'] = _rmstree.osPath()
+
+    if not oiio_home:
+        os.environ['OIIO_HOME'] = jsonDict['OIIO_HOME']
+
+    if not ocio:
+        os.environ['OCIO'] = jsonDict['OCIO']
 
     rman_version = float(re.search(r'RenderManProServer-(\d+\.\d+)', rmantree).group(1))
 
-    rmstree_py = rmstree.join(rmstree, "scripts")
+    rmstree_py = _rmstree.join(_rmstree, "scripts")
     if int(rman_version) == 21:
         if rmstree_py not in sys.path:
             sys.path.append(rmstree_py)
     else:
-        rmantree_py = rmantree.join(rmantree, "bin")
+        rmantree_py = _rmantree.join(_rmantree, "bin")
         if rmstree_py not in sys.path:
             sys.path.insert(0, rmstree_py)
         if rmantree_py not in sys.path:
@@ -226,12 +243,34 @@ def app(name):
     return name
 
 
-def convert_to_aces(asset_path, fpath_list):
-    for img in fpath_list:
-        cmd = ['%s/bin/oiiotool' % os.getenv('REZ_OIIO_ROOT')]
-        cmd += [img, '-v', '--runstats', '--info', '--iscolorspace', 'srgb_texture'] # how to determine if channel is color or not?
-        cmd += ['--tocolorspace', 'acescg', '-o', img] #not sure oiiotool allows overwrite?
+def convert_to_aces(fpath_list):
+    # oiio = FilePath(os.environ['OIIO'])
+    oiio_home = os.getenv('OIIO_HOME')
 
+    for img in fpath_list:
+
+        img = img.replace('acescg', 'srgb')
+        img_tiles = img.replace('_MAPID_', '*')
+        udims = glob.glob(img_tiles)
+
+        for u in udims:
+
+            name_without_ext = '.'.join(u.split('.')[:-1:])
+
+            if name_without_ext.endswith("_srgb"):
+                acescg_file_name = u.replace('srgb', 'acescg')
+                oiio_cmd = ['%s/bin/oiiotool' % oiio_home]
+                oiio_cmd += [u, '-v', '--runstats', '--info', '--iscolorspace', 'srgb_texture']
+                oiio_cmd += ['--tocolorspace', 'acescg', '-o', acescg_file_name]
+                oiio_cmd_str = ' '.join(oiio_cmd)
+                print 'transforming %s %s to acescg:\n' % ('srgb', u), oiio_cmd_str
+
+                p = subprocess.Popen(oiio_cmd, stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     startupinfo=startupInfo())
+                p.wait()
+
+                os.remove(u)
 
 def txmake(is_udim, asset_path, fpath_list):
 
@@ -252,16 +291,25 @@ def txmake(is_udim, asset_path, fpath_list):
                 '-compression', 'lossless',
                 '-newer',
                 'src', 'dst']
+
     for img in fpath_list:
-        cmd[-2] = FilePath(img).osPath()
-        dirname, filename = os.path.split(img)
-        texfile = os.path.splitext(filename)[0] + '.tex'
-        cmd[-1] = asset_path.join(texfile).osPath()
-        DBUG('       |_ txmake : %s -> %s', cmd[-2], cmd[-1])
-        p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                             stderr=subprocess.PIPE,
-                             startupinfo=startupInfo())
-        p.wait()
+
+        img_tiles = img.replace('_MAPID_', '*')
+        udims = glob.glob(img_tiles)
+
+        for u in udims:
+
+            cmd[-2] = FilePath(u).osPath()
+            dirname, filename = os.path.split(u)
+            texfile = os.path.splitext(filename)[0] + '.tex'
+            cmd[-1] = asset_path.join(texfile).osPath()
+            DBUG('       |_ txmake : %s -> %s', cmd[-2], cmd[-1])
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 startupinfo=startupInfo())
+            p.wait()
+
+            os.remove(u)
 
     # return a local path to the tex file.
     dirname, filename = os.path.split(fpath_list[0])
@@ -323,9 +371,11 @@ def export():
         chans = mat['channels']
         DBUG('+ Exporting %s', label)
 
-        assetPath = exportPath.join(label + '.rma')
+        # assetPath = exportPath.join(label + '.rma')
+        assetPath = exportPath
         DBUG('  + assetPath %s', assetPath)
-        assetJsonPath = assetPath.join('asset.json')
+        # assetJsonPath = assetPath.join('asset.json')
+        assetJsonPath = assetPath.join('asset.rma')
         DBUG('  + assetJsonPath %s', assetJsonPath)
 
         # create asset directory
@@ -404,10 +454,10 @@ def export():
             nodeName = "%s_%s_tex" % (label, chan)
             DBUG('    |_ %s' % nodeName)
             chanNodes[chan] = nodeName
-            convert_to_aces(assetPath, fpath_list)
+
+            convert_to_aces(fpath_list)
             fpath = txmake(is_udim, assetPath, fpath_list)
 
-            # for aces conversion, only apply to color images.  how?
             if chan == 'normal':
                 add_texture_node(asset, nodeName, 'PxrNormalMap', fpath)
             elif chan == 'height':
@@ -421,7 +471,12 @@ def export():
         DBUG('  + Direct connections...')
         for chan in chans:
             src = None
-            dstType = mappings[chan]['type']
+
+            try:
+                dstType = mappings[chan]['type']
+            except KeyError:
+                continue
+
             dstParam = mappings[chan]['param']
             if dstType == 'normal':
                 src = '%s.resultN' % (chanNodes[chan])
@@ -500,45 +555,6 @@ def export():
         except:
             XCPT('Saving the asset failed !')
             raise
-
-        # mark this asset as ready to be moved
-        #
-        assetList.append(assetPath)
-
-    # move assets to the requested location
-    #
-    dst = jsonDict['saveTo']
-    for item in assetList:
-        # if the asset already exists in the destination
-        # location, we need to move it first.
-        dstAsset = os.path.join(dst, os.path.basename(item))
-        if os.path.exists(dstAsset):
-            try:
-                os.rename(dstAsset, dstAsset + '_old')
-            except (OSError, IOError):
-                XCPT('Could not rename asset to %s_old' % dstAsset)
-                continue
-            else:
-                shutil.rmtree(dstAsset + '_old', ignore_errors=False)
-        try:
-            shutil.move(item, dst)
-        except (OSError, IOError):
-            XCPT('WARNING: Could not copy asset to %s' % dst)
-
-
-    # clean-up intermediate files
-    for mat in matArray:
-        for chan, fpath_list in chans.iteritems():
-            for fpath in fpath_list:
-                if not os.path.exists(fpath):
-                    print 'cleanup: file not found: %s' % fpath
-                    continue
-                try:
-                    os.remove(fpath)
-                except (OSError, IOError):
-                    XCPT('Cleanup failed: %s' % fpath)
-                else:
-                    DBUG('Cleanup: %s' % fpath)
 
     if os.path.exists(jsonFile):
         try:

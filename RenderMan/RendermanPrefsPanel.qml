@@ -50,6 +50,16 @@ Dialog
             alg.settings.setValue("RMSTREE", rmsPathField.text)
             // alg.log.info("RMSTREE = "+rmsPathField.text)
         }
+        if (oiioPathField.text != "")
+        {
+            alg.settings.setValue("OIIO_HOME", oiioPathField.text)
+            // alg.log.info("OIIO_HOME = "+oiioPathField.text)
+        }
+        if (ocioPathField.text != "")
+        {
+            alg.settings.setValue("OCIO", ocioPathField.text)
+            // alg.log.info("OCIO = "+ocioPathField.text)
+        }
         if (exportPathField.text != "")
         {
             alg.settings.setValue("saveTo", exportPathField.text)
@@ -64,6 +74,8 @@ Dialog
     {
         rmanPathField.readPrefs()
         rmsPathField.readPrefs()
+        oiioPathField.readPrefs()
+        ocioPathField.readPrefs()
         exportPathField.readPrefs()
     }
 
@@ -86,7 +98,7 @@ Dialog
     {
         color: "#292929"
         implicitWidth: 600
-        implicitHeight: 180
+        implicitHeight: 240
         anchors.fill: parent
         property var text_color: "#c0c0c0"
 
@@ -203,8 +215,105 @@ Dialog
         }
 
         RowLayout {
-            id: exportlayout
+            id: oiiolayout
             x:10; y:100
+            height: 30
+            width: parent.width
+            spacing: 6
+            Layout.fillWidth: true
+
+            Text {
+                id: oiioPathLabel
+                text: "OpenImageIO:"
+                horizontalAlignment: Text.AlignRight
+                color: "#e6e6e6"
+                Layout.minimumWidth: 150
+                Layout.maximumWidth: 150
+            }
+            RendermanTextField {
+                id: oiioPathField
+                placeholderText: "path to OIIO installation"
+                anchors.left: oiioPathLabel.right
+                anchors.right: oiioPathButton.left
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+
+                function readPrefs()
+                {
+                    text = alg.settings.value("OIIO_HOME")
+                }
+
+                Component.onCompleted: {
+                    readPrefs()
+                }
+            }
+            RendermanButton
+            {
+                id: oiioPathButton
+                text: "pick"
+                width: 40
+                height: 10
+                anchors.right: oiiolayout.right
+                anchors.rightMargin: 20
+                onClicked: {
+                    folderPickerDialog.fieldid = oiioPathField
+                    folderPickerDialog.setVisible(true)
+                }
+            }
+        }
+
+        RowLayout {
+            id: ociolayout
+            x:10; y:130
+            height: 30
+            width: parent.width
+            spacing: 6
+            Layout.fillWidth: true
+
+            Text {
+                id: ocioPathLabel
+                text: "OpenColorIO Config:"
+                horizontalAlignment: Text.AlignRight
+                color: "#e6e6e6"
+                Layout.minimumWidth: 150
+                Layout.maximumWidth: 150
+            }
+            RendermanTextField {
+                id: ocioPathField
+                placeholderText: "path to OCIO config"
+                anchors.left: ocioPathLabel.right
+                anchors.right: ocioPathButton.left
+                anchors.leftMargin: 4
+                anchors.rightMargin: 4
+
+                function readPrefs()
+                {
+                    text = alg.settings.value("OCIO")
+                }
+
+                Component.onCompleted: {
+                    readPrefs()
+                }
+            }
+            RendermanButton
+            {
+                id: ocioPathButton
+                text: "pick"
+                width: 40
+                height: 10
+                anchors.right: ociolayout.right
+                anchors.rightMargin: 20
+                onClicked: {
+                    folderPickerDialog.fieldid = ocioPathField
+                    folderPickerDialog.setVisible(true)
+                }
+            }
+        }
+
+
+        RowLayout {
+            id: exportlayout
+            x:10; y:160
             height: 30
             width: parent.width
             spacing: 6

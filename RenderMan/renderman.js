@@ -84,13 +84,13 @@ function isUDIMProject(document)
 
 function exportAssets(bxdf) {
 
-    // bail out if the prefs are not all filled
+    // prefs are optional:
     //
-    var valid = checkPrefs()
-    if (!valid) {
-        alg.log.error("RenderMan: Please open the configure panel and fill all fields !")
-        return
-    }
+    // var valid = checkPrefs()
+    // if (!valid) {
+    //     alg.log.error("RenderMan: Please open the configure panel and fill all fields !")
+    //     return
+    // }
 
     alg.log.info("\n\n\n\n")
     var toks = alg.project.url().split('/')
@@ -117,10 +117,10 @@ function exportAssets(bxdf) {
     var tab4 = tab3 + tab
 
     // Query export path
-    //
-    exportPath = osPath(alg.mapexport.exportPath())
-    exportPath += sep + "RenderMan" + sep
-    jsonFilePath = exportPath + "RmanExport.json"
+    exportPath = osPath(alg.mapexport.exportPath()) + "/"
+    jsonFilePath = exportPath + ".temp.json"
+
+    // exportPath = jsonPath(alg.settings.value("saveTo"))
 
     // Export masks
     //
@@ -138,6 +138,8 @@ function exportAssets(bxdf) {
         sp_version: alg.version.painter,
         RMANTREE: jsonPath(alg.settings.value("RMANTREE")),
         RMSTREE: jsonPath(alg.settings.value("RMSTREE")),
+        OIIO_HOME: jsonPath(alg.settings.value("OIIO_HOME")),
+        OCIO: jsonPath(alg.settings.value("OCIO")),
         bxdf: bxdf,
         udim: isUDIM,
         saveTo: jsonPath(alg.settings.value("saveTo")),
@@ -146,10 +148,16 @@ function exportAssets(bxdf) {
 
     // Parse all materials (texture sets)
     //
+
+    alg.mapexport.setProjectExportPreset("ALA_export_UDIM_Seamless")
+    alg.mapexport.showExportDialog()
+
     var mobj = null
     for (matIdx = 0; matIdx < document.materials.length; matIdx++)
     {
         var material = document.materials[matIdx].name
+        var useUVTiles = alg.texturesets.structure(alg.texturesets.getActiveTextureSet()).useUVTiles
+
         if (!isUDIM || matIdx == 0)
         {
             mobj = {
@@ -163,35 +171,24 @@ function exportAssets(bxdf) {
         for (channelIdx = 0; channelIdx < numChannels; channelIdx++)
         {
             var thisChannel = document.materials[matIdx].stacks[0].channels[channelIdx]
-            // alg.log.info("RenderMan:   | " + thisChannel)
+            alg.log.info("RenderMan:   | " + thisChannel)
 
-            // Skip the height channel: we prefer normal maps.
-            if (thisChannel == "height")
-            {
-                // alg.log.info("RenderMan:   |_ skip")
-                continue
+            var colorspace;
+
+            if (thisChannel.match(/^(basecolor|diffuse|emissive|specular)$/)) {
+                colorspace = "acescg"
+            }
+            else{
+                colorspace = "linear"
             }
 
-            var output = exportPath
-            if (isUDIM)
-                output += thisChannel + "." + material + ext
-            else
-                output += material + "_" + thisChannel + ext
+            if (isUDIM || useUVTiles) {
+                var output = exportPath + "_MAPID__" + thisChannel + "_" + colorspace + ext
+            }
+            else{
+                var output = exportPath + material + thisChannel + "_" + colorspace + ext
+            }
 
-            var t0 = new Date().getTime()
-            if (thisChannel == "normal")
-            {
-                // Make sure the normals are correctly configured to combine
-                // mesh + height + normal.
-                alg.mapexport.saveConvertedMap([material], "normal_directx", output)
-            }
-            else
-            {
-                // regular map export
-                alg.mapexport.save([material, thisChannel], output)
-            }
-            var t1 = new Date().getTime()
-            alg.log.info("RenderMan:   |_ Exported in " + ((t1-t0)/1000.0).toFixed(2) + " sec.: " + output)
 
             try {
                 mobj.channels[thisChannel].push(jsonPath(output))
