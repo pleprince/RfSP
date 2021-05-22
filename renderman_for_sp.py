@@ -73,7 +73,7 @@ def pick_directory(*args):
     libpath = QFileDialog.getExistingDirectory(
         None, 'Select a directory...')
     args[0].setText(libpath)
-    LOG.info(str(args))
+    LOG.info('pick_directory%s', str(args))
 
 
 class Prefs(object):
@@ -108,7 +108,6 @@ class RenderManForSP(object):
 
     def __init__(self):
         self.root = root_dir()
-        self.widgets = []
         LOG.info('root = %r', self.root)
         rpath = os.path.join(self.root, 'renderman.rcc')
         rloaded = QResource.registerResource(rpath)
@@ -117,10 +116,9 @@ class RenderManForSP(object):
         self.prefs = Prefs()
         self.build_panel()
 
-    def __del__(self):
-        LOG.info('DELETE !!')
-        for widget in self.widgets:
-            spui.delete_ui_element(widget)
+    def cleanup(self):
+        LOG.info('cleanup')
+        spui.delete_ui_element(self.toolbar)
 
     def filepath_field(self, label, text, changed=None, icon=None,
                        placeholder=None):
@@ -153,7 +151,7 @@ class RenderManForSP(object):
         root = QWidget()
         root.setWindowTitle("RenderMan")
         # Add this widget as a dock to the interface
-        spui.add_dock_widget(root)
+        self.toolbar = spui.add_dock_widget(root)
 
         vlyt = QVBoxLayout()
         # vlyt.setContentsMargins(5, 10, 5, 10)
@@ -193,10 +191,15 @@ class RenderManForSP(object):
                                 icon=':folder.svg'))
         # keep ui at top of layout
         vlyt.addStretch(1)
-        # Store added widget for proper cleanup when stopping the plugin
-        self.widgets.append(root)
+        # Connect buttons
+        but1.clicked.connect(partial(self.export, 'PxrSurface'))
+        but2.clicked.connect(partial(self.export, 'PxrDisney'))
         LOG.info('  |_ done')
 
+    def export(self, bxdf):
+        LOG.info('export %s', bxdf)
+
+# -----------------------------------------------------------------------------
 
 def start_plugin():
     """This method is called when the plugin is started."""
@@ -207,6 +210,7 @@ def start_plugin():
 def close_plugin():
     """This method is called when the plugin is stopped."""
     # We need to remove all added widgets from the UI.
+    getattr(start_plugin, 'obj').cleanup()
     setattr(start_plugin, 'obj', None)
     LOG.info('RenderMan stopped')
 
