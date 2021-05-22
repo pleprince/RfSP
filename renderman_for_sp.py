@@ -30,7 +30,7 @@ import os
 import inspect
 import json
 from functools import partial
-# from PySide2 import (QtWidgets, QtGui, QtCore)   # pylint: disable=import-error
+# from PySide2 import (QtWidgets, QtGui, QtCore)  # pylint: disable=import-error
 from PySide2.QtCore import (QResource, Qt)   # pylint: disable=import-error
 from PySide2.QtGui import (QIcon)   # pylint: disable=import-error
 from PySide2.QtWidgets import (
@@ -40,6 +40,23 @@ import substance_painter.ui as spui         # pylint: disable=import-error
 import substance_painter.logging as spl     # pylint: disable=import-error
 
 __version__ = '2.0.0a1'
+
+
+class Log():
+    def __init__(self):
+        self.channel = 'RenderMan %s' % __version__
+
+    def info(self, msg, *args):
+        spl.log(spl.INFO, self.channel, msg % args)
+
+    def warning(self, msg, *args):
+        spl.log(spl.WARNING, self.channel, msg % args)
+
+    def error(self, msg, *args):
+        spl.log(spl.ERROR, self.channel, msg % args)
+
+
+LOG = Log()
 
 
 def root_dir():
@@ -56,7 +73,7 @@ def pick_directory(*args):
     libpath = QFileDialog.getExistingDirectory(
         None, 'Select a directory...')
     args[0].setText(libpath)
-    spl.info(str(args))
+    LOG.info(str(args))
 
 
 class Prefs(object):
@@ -75,7 +92,7 @@ class Prefs(object):
     def save(self):
         with open(self.file, mode='w') as fhdl:
             json.dump(self.prefs, fhdl)
-        spl.info('PREFS SAVED')
+        LOG.info('PREFS SAVED')
 
     def set(self, key, val):
         self.prefs[key] = val
@@ -92,7 +109,7 @@ class RenderManForSP(object):
     def __init__(self):
         self.root = root_dir()
         self.widgets = []
-        spl.info('root = %s' % self.root)
+        LOG.info('root = %r', self.root)
         rpath = os.path.join(self.root, 'renderman.rcc')
         rloaded = QResource.registerResource(rpath)
         if not rloaded:
@@ -101,11 +118,12 @@ class RenderManForSP(object):
         self.build_panel()
 
     def __del__(self):
-        spl.info('DELETE !!')
+        LOG.info('DELETE !!')
         for widget in self.widgets:
             spui.delete_ui_element(widget)
 
-    def filepath_field(self, label, text, changed=None, icon=None, placeholder=None):
+    def filepath_field(self, label, text, changed=None, icon=None,
+                       placeholder=None):
         lyt = QHBoxLayout()
         lbl = QLabel(label)
         lyt.addWidget(lbl)
@@ -119,7 +137,7 @@ class RenderManForSP(object):
         lyt.addWidget(fld)
         but = QToolButton()
         if icon is not None:
-            spl.info(' + icon = %s' % icon)
+            LOG.info(' + icon = %s', icon)
             icon = QIcon(icon)
             but.setIcon(icon)
         but.clicked.connect(partial(pick_directory, fld))
@@ -130,7 +148,7 @@ class RenderManForSP(object):
 
     def build_panel(self):
         """Build the UI"""
-        spl.info('build_panel')
+        LOG.info('build_panel')
         # Create a simple text widget
         root = QWidget()
         root.setWindowTitle("RenderMan")
@@ -164,9 +182,11 @@ class RenderManForSP(object):
         vlyt2.setSpacing(5)
         vlyt.addLayout(vlyt2)
         vlyt2.addLayout(
-            self.filepath_field('RenderMan Pro Server:', self.prefs.get('RMANTREE', ''),
+            self.filepath_field('RenderMan Pro Server:',
+                                self.prefs.get('RMANTREE', ''),
                                 partial(self.prefs.set, 'RMANTREE'),
-                                icon=':folder.svg', placeholder='$RMANTREE'))
+                                icon=':folder.svg',
+                                placeholder='$RMANTREE'))
         vlyt2.addLayout(
             self.filepath_field('Export to:', self.prefs.get('saveTo', ''),
                                 partial(self.prefs.set, 'saveTo'),
@@ -175,20 +195,20 @@ class RenderManForSP(object):
         vlyt.addStretch(1)
         # Store added widget for proper cleanup when stopping the plugin
         self.widgets.append(root)
-        spl.info('  |_ done')
+        LOG.info('  |_ done')
 
 
 def start_plugin():
     """This method is called when the plugin is started."""
     setattr(start_plugin, 'obj', RenderManForSP())
-    spl.info('RenderMan started')
+    LOG.info('RenderMan started')
 
 
 def close_plugin():
     """This method is called when the plugin is stopped."""
     # We need to remove all added widgets from the UI.
     setattr(start_plugin, 'obj', None)
-    spl.info('RenderMan stopped')
+    LOG.info('RenderMan stopped')
 
 
 if __name__ == "__main__":
