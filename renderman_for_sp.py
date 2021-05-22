@@ -91,7 +91,7 @@ class Prefs(object):
 
     def save(self):
         with open(self.file, mode='w') as fhdl:
-            json.dump(self.prefs, fhdl)
+            json.dump(self.prefs, fhdl, sort_keys=False, indent=4)
         LOG.info('PREFS SAVED')
 
     def set(self, key, val):
@@ -107,14 +107,17 @@ class Prefs(object):
 class RenderManForSP(object):
 
     def __init__(self):
+        # find root dir
         self.root = root_dir()
         LOG.info('root = %r', self.root)
+        # load resource file
         rpath = os.path.join(self.root, 'renderman.rcc')
         rloaded = QResource.registerResource(rpath)
         if not rloaded:
-            spl.error('Invalid Resource: %s', rpath)
+            LOG.error('Invalid Resource: %s', rpath)
+        # init UI
         self.prefs = Prefs()
-        self.build_panel()
+        self.widget, self.toolbar = self.build_panel()
 
     def cleanup(self):
         LOG.info('cleanup')
@@ -151,7 +154,7 @@ class RenderManForSP(object):
         root = QWidget()
         root.setWindowTitle("RenderMan")
         # Add this widget as a dock to the interface
-        self.toolbar = spui.add_dock_widget(root)
+        toolbar = spui.add_dock_widget(root)
 
         vlyt = QVBoxLayout()
         # vlyt.setContentsMargins(5, 10, 5, 10)
@@ -195,6 +198,7 @@ class RenderManForSP(object):
         but1.clicked.connect(partial(self.export, 'PxrSurface'))
         but2.clicked.connect(partial(self.export, 'PxrDisney'))
         LOG.info('  |_ done')
+        return root, toolbar
 
     def export(self, bxdf):
         LOG.info('export %s', bxdf)
@@ -210,7 +214,9 @@ def start_plugin():
 def close_plugin():
     """This method is called when the plugin is stopped."""
     # We need to remove all added widgets from the UI.
-    getattr(start_plugin, 'obj').cleanup()
+    rman_obj = getattr(start_plugin, 'obj')
+    rman_obj.cleanup()
+    del rman_obj
     setattr(start_plugin, 'obj', None)
     LOG.info('RenderMan stopped')
 
