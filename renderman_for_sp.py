@@ -27,6 +27,8 @@ Export substance painter maps to a RenderMan Asset package.
 # -----------------------------------------------------------------------------
 
 import os
+import sys
+import traceback
 import inspect
 import json
 from functools import partial
@@ -35,7 +37,8 @@ from PySide2.QtCore import (QResource, Qt)   # pylint: disable=import-error
 from PySide2.QtGui import (QIcon)   # pylint: disable=import-error
 from PySide2.QtWidgets import (
     QWidget, QHBoxLayout, QVBoxLayout, QLabel, QLineEdit, QToolButton,
-    QPushButton, QFrame, QSizePolicy, QFileDialog)   # pylint: disable=import-error
+    QPushButton, QFrame, QSizePolicy, QFileDialog,
+    QMenuBar)   # pylint: disable=import-error
 import substance_painter.ui as spui         # pylint: disable=import-error
 import substance_painter.logging as spl     # pylint: disable=import-error
 
@@ -45,6 +48,8 @@ __version__ = '2.0.0a1'
 class Log():
     def __init__(self):
         self.channel = 'RenderMan %s' % __version__
+        pyv = sys.version_info
+        self.info('SP python: %d.%d.%d', *tuple(pyv[0:3]))
 
     def info(self, msg, *args):
         spl.log(spl.INFO, self.channel, msg % args)
@@ -117,11 +122,11 @@ class RenderManForSP(object):
             LOG.error('Invalid Resource: %s', rpath)
         # init UI
         self.prefs = Prefs()
-        self.widget, self.toolbar = self.build_panel()
+        self.widget, self.dock = self.build_panel()
 
     def cleanup(self):
         LOG.info('cleanup')
-        spui.delete_ui_element(self.toolbar)
+        spui.delete_ui_element(self.dock)
 
     def filepath_field(self, label, text, changed=None, icon=None,
                        placeholder=None):
@@ -151,54 +156,113 @@ class RenderManForSP(object):
         """Build the UI"""
         LOG.info('build_panel')
         # Create a simple text widget
-        root = QWidget()
+        root = QWidget(None, Qt.Window)
         root.setWindowTitle("RenderMan")
+        logo = QIcon(':R_logo.svg')
+        logo.addFile(':R_logo_white.svg', mode=QIcon.Normal, state=QIcon.On)
+        root.setWindowIcon(logo)
         # Add this widget as a dock to the interface
-        toolbar = spui.add_dock_widget(root)
+        dock = spui.add_dock_widget(root)
 
-        vlyt = QVBoxLayout()
-        # vlyt.setContentsMargins(5, 10, 5, 10)
-        vlyt.setSpacing(10)
-        root.setLayout(vlyt)
-        # top buttons
-        hlyt1 = QHBoxLayout()
-        vlyt.addLayout(hlyt1)
-        but1 = QPushButton(QIcon(':PxrSurface_hover.svg'), 'PxrSurface')
-        but2 = QPushButton(QIcon(':PxrDisney_hover.svg'), 'PxrDisney')
-        hlyt1.addWidget(but1)
-        hlyt1.addWidget(but2)
-        hlyt1.addStretch(1)
-        vers = QLabel('<p style="color: #666;">%s</p>' % __version__)
-        vers.setAlignment(Qt.AlignRight | Qt.AlignBottom)
-        hlyt1.addWidget(vers)
-        # hline
-        line = QFrame()
-        line.setFrameShape(QFrame.HLine)
-        line.setFixedHeight(1)
-        line.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        line.setStyleSheet('background-color: #262626;')
-        vlyt.addWidget(line)
-        # prefs
-        vlyt2 = QVBoxLayout()
-        vlyt2.setSpacing(5)
-        vlyt.addLayout(vlyt2)
-        vlyt2.addLayout(
-            self.filepath_field('RenderMan Pro Server:',
-                                self.prefs.get('RMANTREE', ''),
-                                partial(self.prefs.set, 'RMANTREE'),
-                                icon=':folder.svg',
-                                placeholder='$RMANTREE'))
-        vlyt2.addLayout(
-            self.filepath_field('Export to:', self.prefs.get('saveTo', ''),
-                                partial(self.prefs.set, 'saveTo'),
-                                icon=':folder.svg'))
-        # keep ui at top of layout
-        vlyt.addStretch(1)
+        # vlyt = QVBoxLayout()
+        # # vlyt.setContentsMargins(5, 10, 5, 10)
+        # vlyt.setSpacing(10)
+        # root.setLayout(vlyt)
+        # # top buttons
+        # hlyt1 = QHBoxLayout()
+        # vlyt.addLayout(hlyt1)
+        # but1 = QPushButton(QIcon(':PxrSurface_hover.svg'), 'PxrSurface')
+        # but2 = QPushButton(QIcon(':PxrDisney_hover.svg'), 'PxrDisney')
+        # hlyt1.addWidget(but1)
+        # hlyt1.addWidget(but2)
+        # hlyt1.addStretch(1)
+        # vers = QLabel('<p style="color: #666;">%s</p>' % __version__)
+        # vers.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        # hlyt1.addWidget(vers)
+        # # hline
+        # line = QFrame()
+        # line.setFrameShape(QFrame.HLine)
+        # line.setFixedHeight(1)
+        # line.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        # line.setStyleSheet('background-color: #262626;')
+        # vlyt.addWidget(line)
+        # # prefs
+        # vlyt2 = QVBoxLayout()
+        # vlyt2.setSpacing(5)
+        # vlyt.addLayout(vlyt2)
+        # vlyt2.addLayout(
+        #     self.filepath_field('RenderMan Pro Server:',
+        #                         self.prefs.get('RMANTREE', ''),
+        #                         partial(self.prefs.set, 'RMANTREE'),
+        #                         icon=':folder.svg',
+        #                         placeholder='$RMANTREE'))
+        # vlyt2.addLayout(
+        #     self.filepath_field('Export to:', self.prefs.get('saveTo', ''),
+        #                         partial(self.prefs.set, 'saveTo'),
+        #                         icon=':folder.svg'))
+        # preset browser
+        rmantree = self.prefs.get('RMANTREE', '')
+        os.environ['RMANTREE'] = rmantree
+        rmp_path = os.path.join(rmantree, 'lib', 'python3.7', 'site-packages')
+        if rmp_path not in sys.path:
+            sys.path.append(rmp_path)
+        rmu_path = os.path.join(rmantree, 'bin')
+        if rmu_path not in sys.path:
+            sys.path.append(rmu_path)
+        try:
+            import rman_utils.rman_assets as ra
+            import rman_utils.rman_assets.core as rac
+            import rman_utils.rman_assets.ui as rui
+            import rman_utils.rman_assets.lib as ral
+        except BaseException as err:
+            LOG.error('Failed to import: %s', err)
+            traceback.print_exc(file=sys.stdout)
+        else:
+            class SPrefs(ral.HostPrefs):
+                def __init__(self, rman_version, pref_obj):
+                    super(SPrefs, self).__init__(rman_version)
+                    self.obj = pref_obj
+                def getHostPref(self, prefName, defaultValue):
+                    return self.obj.get(prefName, defaultValue)
+                def setHostPref(self, prefName, value):
+                    pass
+                def saveAllPrefs(self):
+                    pass
+                def preExportCheck(self, mode, hdr=None):
+                    return True
+                def exportMaterial(self, categorypath, infodict, previewtype):
+                    pass
+
+            root.setWindowFlag(Qt.SubWindow, True)
+            try:
+                self.aui = ra.ui.Ui(SPrefs('25.0b1', self.prefs), parent=root)
+            except BaseException:
+                traceback.print_exc(file=sys.stdout)
+            else:
+                ssht = ('''
+                    QPushButton:flat {
+                        background-color: rgba(0, 0, 0, 0);
+                    }
+                    QPushButton:flat:hover {
+                        background-color: rgba(32, 64, 128, 255);
+                    }
+                    QFrame {
+                        background-color: rgba(40, 40, 40, 255);
+                    }
+                    ''')
+                self.aui.sampleView.widget.setStyleSheet(ssht)
+                self.aui.categoryList.widget.setStyleSheet(ssht)
+                self.aui.assetList.widget.setStyleSheet(ssht)
+                root.setLayout(self.aui.topLayout)
+
+        # # Add this widget as a dock to the interface
+        # dock = spui.add_dock_widget(root)
+
         # Connect buttons
-        but1.clicked.connect(partial(self.export, 'PxrSurface'))
-        but2.clicked.connect(partial(self.export, 'PxrDisney'))
+        # but1.clicked.connect(partial(self.export, 'PxrSurface'))
+        # but2.clicked.connect(partial(self.export, 'PxrDisney'))
         LOG.info('  |_ done')
-        return root, toolbar
+        return root, dock
 
     def export(self, bxdf):
         LOG.info('export %s', bxdf)
