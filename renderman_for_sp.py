@@ -164,42 +164,6 @@ class RenderManForSP(object):
         # Add this widget as a dock to the interface
         dock = spui.add_dock_widget(root)
 
-        # vlyt = QVBoxLayout()
-        # # vlyt.setContentsMargins(5, 10, 5, 10)
-        # vlyt.setSpacing(10)
-        # root.setLayout(vlyt)
-        # # top buttons
-        # hlyt1 = QHBoxLayout()
-        # vlyt.addLayout(hlyt1)
-        # but1 = QPushButton(QIcon(':PxrSurface_hover.svg'), 'PxrSurface')
-        # but2 = QPushButton(QIcon(':PxrDisney_hover.svg'), 'PxrDisney')
-        # hlyt1.addWidget(but1)
-        # hlyt1.addWidget(but2)
-        # hlyt1.addStretch(1)
-        # vers = QLabel('<p style="color: #666;">%s</p>' % __version__)
-        # vers.setAlignment(Qt.AlignRight | Qt.AlignBottom)
-        # hlyt1.addWidget(vers)
-        # # hline
-        # line = QFrame()
-        # line.setFrameShape(QFrame.HLine)
-        # line.setFixedHeight(1)
-        # line.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        # line.setStyleSheet('background-color: #262626;')
-        # vlyt.addWidget(line)
-        # # prefs
-        # vlyt2 = QVBoxLayout()
-        # vlyt2.setSpacing(5)
-        # vlyt.addLayout(vlyt2)
-        # vlyt2.addLayout(
-        #     self.filepath_field('RenderMan Pro Server:',
-        #                         self.prefs.get('RMANTREE', ''),
-        #                         partial(self.prefs.set, 'RMANTREE'),
-        #                         icon=':folder.svg',
-        #                         placeholder='$RMANTREE'))
-        # vlyt2.addLayout(
-        #     self.filepath_field('Export to:', self.prefs.get('saveTo', ''),
-        #                         partial(self.prefs.set, 'saveTo'),
-        #                         icon=':folder.svg'))
         # preset browser
         rmantree = self.prefs.get('RMANTREE', '')
         os.environ['RMANTREE'] = rmantree
