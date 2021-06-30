@@ -239,20 +239,6 @@ class RenderManForSP(object):
             except BaseException:
                 traceback.print_exc(file=sys.stdout)
             else:
-                ssht = ('''
-                    QPushButton:flat {
-                        background-color: rgba(0, 0, 0, 0);
-                    }
-                    QPushButton:flat:hover {
-                        background-color: rgba(32, 64, 128, 255);
-                    }
-                    QFrame {
-                        background-color: rgba(40, 40, 40, 255);
-                    }
-                    ''')
-                self.aui.sampleView.widget.setStyleSheet(ssht)
-                self.aui.categoryList.widget.setStyleSheet(ssht)
-                self.aui.assetList.widget.setStyleSheet(ssht)
                 root.setLayout(self.aui.topLayout)
 
         # # Add this widget as a dock to the interface
