@@ -31,6 +31,7 @@ import sys
 import traceback
 import inspect
 import json
+import logging
 from functools import partial
 # from PySide2 import (QtWidgets, QtGui, QtCore)  # pylint: disable=import-error
 from PySide2.QtCore import (QResource, Qt)   # pylint: disable=import-error
@@ -88,16 +89,20 @@ class Prefs(object):
         self.root = root_dir()
         self.file = os.path.join(self.root, 'renderman.prefs')
         self.load()
+        # LOG.info('Prefs created')
 
     def load(self):
         if os.path.exists(self.file):
             with open(self.file, 'r') as fhdl:
                 self.prefs = json.load(fhdl)
+            # LOG.info('Loaded: %s', self.file)
+        else:
+            # LOG.info('NOT loaded: %s', self.file)
 
     def save(self):
         with open(self.file, mode='w') as fhdl:
             json.dump(self.prefs, fhdl, sort_keys=False, indent=4)
-        LOG.info('PREFS SAVED')
+        LOG.info('PREFS SAVED: %s', self.file)
 
     def set(self, key, val):
         self.prefs[key] = val
@@ -178,24 +183,71 @@ class RenderManForSP(object):
             import rman_utils.rman_assets.core as rac
             import rman_utils.rman_assets.ui as rui
             import rman_utils.rman_assets.lib as ral
+            from rman_utils.filepath import FilePath
         except BaseException as err:
             LOG.error('Failed to import: %s', err)
             traceback.print_exc(file=sys.stdout)
-        else:
+        # else:
+        #     ra.setLogLevel(logging.DEBUG)
+
             class SPrefs(ral.HostPrefs):
+                saved = {
+                    'rpbConfigFile': FilePath(''), 'rpbUserLibraries': [],
+                    'rpbSwatchSize': 64, 'rpbSelectedPreviewEnv': 0,
+                    'rpbSelectedCategory': 'Materials',
+                    'rpbSelectedLibrary': FilePath(''),
+                    'rpbRenderAllHDRs': False,
+                    'rpbHideFactoryLib': False
+                }
+
                 def __init__(self, rman_version, pref_obj):
                     super(SPrefs, self).__init__(rman_version)
-                    self.obj = pref_obj
+                    self.prefsobj = pref_obj
+                    if 'host_prefs' in self.prefsobj.prefs:
+                        hprefs = self.prefsobj.prefs['host_prefs']
+                        for k in self.saved:
+                            setattr(self, k, hprefs.get(k, self.saved[k]))
+                            if k == 'rpbConfigFile':
+                                self.rpbConfigFile = FilePath(
+                                    self.rpbConfigFile)
+                            elif k == 'rpbSelectedLibrary':
+                                self.rpbSelectedLibrary = FilePath(
+                                    self.rpbSelectedLibrary)
+                            elif k == 'rpbUserLibraries' \
+                                    and self.rpbUserLibraries \
+                                    and isinstance(self.rpbUserLibraries, list):
+                                self.rpbUserLibraries = [
+                                    FilePath(f) for f in self.rpbUserLibraries]
+                        # LOG.info('prefs data loaded')
+                    # self._print()
+                    # LOG.info('SPrefs object created')
+
                 def getHostPref(self, prefName, defaultValue):
-                    return self.obj.get(prefName, defaultValue)
+                    return self.prefsobj.get(prefName, defaultValue)
+
                 def setHostPref(self, prefName, value):
-                    pass
+                    prefs = self.prefsobj.get('host_prefs', {})
+                    prefs[prefName] = value
+                    self.prefsobj.set('host_prefs', prefs)
+                    # self._print()
+
                 def saveAllPrefs(self):
-                    pass
+                    for k in self.saved:
+                        self.setHostPref(k, getattr(self, k))
+                    # self._print()
+
                 def preExportCheck(self, mode, hdr=None):
                     return True
+
                 def exportMaterial(self, categorypath, infodict, previewtype):
                     pass
+
+                def _print(self):
+                    prefs = self.prefsobj.get('host_prefs', {})
+                    loaded = ['\t%s: %s\n' % (k, prefs[k]) for k in prefs]
+                    state = ['\t%s: %s\n' % (k, getattr(self, k)) for k in self.saved]
+                    LOG.info('%r ------------------------\nLOADED:\n%s\nSTATE:\n%s', self,
+                             ''.join(loaded), ''.join(state))
 
             root.setWindowFlag(Qt.SubWindow, True)
             try:
@@ -205,12 +257,6 @@ class RenderManForSP(object):
             else:
                 root.setLayout(self.aui.topLayout)
 
-        # # Add this widget as a dock to the interface
-        # dock = spui.add_dock_widget(root)
-
-        # Connect buttons
-        # but1.clicked.connect(partial(self.export, 'PxrSurface'))
-        # but2.clicked.connect(partial(self.export, 'PxrDisney'))
         LOG.info('  |_ done')
         return root, dock
 
