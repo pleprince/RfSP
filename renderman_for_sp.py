@@ -42,6 +42,7 @@ from PySide2.QtWidgets import (
     QMenuBar)   # pylint: disable=import-error
 import substance_painter.ui as spui         # pylint: disable=import-error
 import substance_painter.logging as spl     # pylint: disable=import-error
+import substance_painter.project as spp     # pylint: disable=import-error
 
 __version__ = '2.0.0a1'
 
@@ -96,8 +97,8 @@ class Prefs(object):
             with open(self.file, 'r') as fhdl:
                 self.prefs = json.load(fhdl)
             # LOG.info('Loaded: %s', self.file)
-        else:
-            # LOG.info('NOT loaded: %s', self.file)
+        # else:
+        #     LOG.info('NOT loaded: %s', self.file)
 
     def save(self):
         with open(self.file, mode='w') as fhdl:
@@ -187,8 +188,8 @@ class RenderManForSP(object):
         except BaseException as err:
             LOG.error('Failed to import: %s', err)
             traceback.print_exc(file=sys.stdout)
-        # else:
-        #     ra.setLogLevel(logging.DEBUG)
+        else:
+            # ra.setLogLevel(logging.DEBUG)
 
             class SPrefs(ral.HostPrefs):
                 saved = {
@@ -213,12 +214,10 @@ class RenderManForSP(object):
                             elif k == 'rpbSelectedLibrary':
                                 self.rpbSelectedLibrary = FilePath(
                                     self.rpbSelectedLibrary)
-                            elif k == 'rpbUserLibraries' \
-                                    and self.rpbUserLibraries \
-                                    and isinstance(self.rpbUserLibraries, list):
+                            elif k == 'rpbUserLibraries' and self.rpbUserLibraries:
                                 self.rpbUserLibraries = [
                                     FilePath(f) for f in self.rpbUserLibraries]
-                        # LOG.info('prefs data loaded')
+                    #     LOG.info('prefs data loaded')
                     # self._print()
                     # LOG.info('SPrefs object created')
 
@@ -237,7 +236,16 @@ class RenderManForSP(object):
                     # self._print()
 
                 def preExportCheck(self, mode, hdr=None):
-                    return True
+                    LOG.info('preExportCheck: %r, hdr=%r', mode, hdr)
+                    if mode == 'material':
+                        try:
+                            self._defaultLabel = spp.name() or 'UNTITLED'
+                        except BaseException as err:
+                            LOG.error('%s', err)
+                            return False
+                        return True
+                    LOG.warning('Not supported (%s)', mode)
+                    return False
 
                 def exportMaterial(self, categorypath, infodict, previewtype):
                     pass
