@@ -115,6 +115,7 @@
                 "nodes": {
                     "_specFaceColor": {
                         "nodetype": "PxrBlend",
+                        "category": "pattern",
                         "params": {
                             "operation": {
                                 "type": "int",
@@ -140,6 +141,7 @@
                     },
                     "_specEdgeColor": {
                         "nodetype": "PxrBlend",
+                        "category": "pattern",
                         "params": {
                             "operation": {
                                 "type": "int",
@@ -165,6 +167,7 @@
                     },
                     "_diffuseAtten": {
                         "nodetype": "PxrBlend",
+                        "category": "pattern",
                         "params": {
                             "operation": {
                                 "type": "int",
@@ -384,6 +387,7 @@
                 "nodes": {
                     "_clearcoatLayer": {
                         "nodetype": "LamaLayer",
+                        "category": "bxdf",
                         "params": {
                             "topMix": {
                                 "type": "float",
@@ -393,10 +397,12 @@
                     },
                     "_clearcoat": {
                         "nodetype": "LamaDielectric",
+                        "category": "bxdf",
                         "params": {}
                     },
                     "_diffSpec": {
                         "nodetype": "LamaAdd",
+                        "category": "bxdf",
                         "params": {
                             "weight1": {
                                 "type": "float",
@@ -410,10 +416,12 @@
                     },
                     "_diffuse": {
                         "nodetype": "LamaDiffuse",
+                        "category": "bxdf",
                         "params": {}
                     },
                     "_specular": {
                         "nodetype": "LamaConductor",
+                        "category": "bxdf",
                         "params": {
                             "fresnelMode": {
                                 "type": "int",
@@ -423,6 +431,7 @@
                     },
                     "_converter": {
                         "nodetype": "PxrMetallicWorkflow",
+                        "category": "pattern",
                         "params": {}
                     }
                 },

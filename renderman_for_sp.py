@@ -340,7 +340,8 @@ class RenderManForSP(object):
                             for nname, ndict in graph['nodes'].items():
                                 lname = label + nname
                                 asset.addNode(lname, ndict['nodetype'],
-                                              'pattern', ndict['nodetype'])
+                                              ndict.get('category', 'pattern'),
+                                              ndict['nodetype'])
                                 LOG.info('    |_ %s  (%s)', lname, ndict['nodetype'])
                                 if 'params' in ndict:
                                     for pname, pdict in ndict['params'].items():
