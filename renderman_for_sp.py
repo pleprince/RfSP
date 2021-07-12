@@ -26,12 +26,7 @@ Export substance painter maps to a RenderMan Asset package.
 #  SOFTWARE.
 # -----------------------------------------------------------------------------
 
-# TODO: dialogs for unsupported stuff
 # TODO: Colorspace txmake
-# TODO: ERROR if RPS version < 24.1
-# TODO: File picker to RMANTREE
-# TODO: Complain if python API < 0.1.0
-
 
 import os
 import sys
@@ -245,15 +240,18 @@ class RenderManForSP(object):
                     # self._print()
 
                 def preExportCheck(self, mode, hdr=None):
-                    LOG.info('preExportCheck: %r, hdr=%r', mode, hdr)
+                    # LOG.info('preExportCheck: %r, hdr=%r', mode, hdr)
                     if mode == 'material':
                         try:
                             self._defaultLabel = spp.name() or 'UNTITLED'
                         except BaseException as err:
                             LOG.error('%s', err)
+                            msg_box(str(err), '', QMessageBox.Ok, QMessageBox.Ok)
                             return False
                         return True
                     LOG.warning('Not supported (%s)', mode)
+                    msg_box('This is not supported !', 'Sorry...',
+                            QMessageBox.Ok, QMessageBox.Ok)
                     return False
 
                 def exportMaterial(self, categorypath, infodict, previewtype):
