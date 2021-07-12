@@ -27,6 +27,8 @@ Export substance painter maps to a RenderMan Asset package.
 # -----------------------------------------------------------------------------
 
 # TODO: Colorspace txmake
+# TODO: remove non-exportable channels for def.
+# pylint: disable=missing-docstring
 
 import os
 import sys
@@ -71,23 +73,39 @@ MIN_RPS = '24.1'
 MIN_SP_API = '0.1.0'
 
 
-class Log():
-    def __init__(self):
+class Log(object):
+    def __init__(self, loglevel=spl.ERROR):
         self.channel = 'RenderMan %s' % __version__
+        self.loglevel = loglevel
         pyv = sys.version_info
         self.info('SP python: %d.%d.%d', *tuple(pyv[0:3]))
 
-    def info(self, msg, *args):
-        spl.log(spl.INFO, self.channel, msg % args)
+    def debug_error(self, msg, *args):          # 6
+        if self.loglevel >= spl.DBG_ERROR:
+            spl.log(spl.DBG_ERROR, self.channel, msg % args)
 
-    def warning(self, msg, *args):
-        spl.log(spl.WARNING, self.channel, msg % args)
+    def debug_warning(self, msg, *args):
+        if self.loglevel >= spl.DBG_WARNING:    # 4
+            spl.log(spl.DBG_WARNING, self.channel, msg % args)
+
+    def debug_info(self, msg, *args):
+        if self.loglevel >= spl.DBG_INFO:       # 3
+            spl.log(spl.DBG_INFO, self.channel, msg % args)
 
     def error(self, msg, *args):
-        spl.log(spl.ERROR, self.channel, msg % args)
+        if self.loglevel >= spl.ERROR:          # 2
+            spl.log(spl.ERROR, self.channel, msg % args)
+
+    def warning(self, msg, *args):
+        if self.loglevel >= spl.WARNING:        # 1
+            spl.log(spl.WARNING, self.channel, msg % args)
+
+    def info(self, msg, *args):
+        if self.loglevel >= spl.INFO:           # 0
+            spl.log(spl.INFO, self.channel, msg % args)
 
 
-LOG = Log()
+LOG = Log(loglevel=spl.ERROR)
 
 
 def root_dir():
@@ -114,20 +132,20 @@ class Prefs(object):
         self.root = root_dir()
         self.file = os.path.join(self.root, 'renderman.prefs')
         self.load()
-        # LOG.info('Prefs created')
+        LOG.debug_info('Prefs created')
 
     def load(self):
         if os.path.exists(self.file):
             with open(self.file, 'r') as fhdl:
                 self.prefs = json.load(fhdl)
-            # LOG.info('Loaded: %s', self.file)
-        # else:
-        #     LOG.info('NOT loaded: %s', self.file)
+            LOG.debug_info('Loaded: %s', self.file)
+        else:
+            LOG.debug_warning('NOT loaded: %s', self.file)
 
     def save(self):
         with open(self.file, mode='w') as fhdl:
             json.dump(self.prefs, fhdl, sort_keys=False, indent=4)
-        LOG.info('PREFS SAVED: %s', self.file)
+        LOG.debug_info('PREFS SAVED: %s', self.file)
 
     def set(self, key, val):
         self.prefs[key] = val
@@ -144,7 +162,7 @@ class RenderManForSP(object):
     def __init__(self):
         # find root dir
         self.root = root_dir()
-        LOG.info('root = %r', self.root)
+        LOG.debug_info('root = %r', self.root)
         # load resource file
         rpath = os.path.join(self.root, 'renderman.rcc')
         rloaded = QResource.registerResource(rpath)
@@ -155,13 +173,13 @@ class RenderManForSP(object):
         self.widget, self.dock = self.build_panel()
 
     def cleanup(self):
-        LOG.info('cleanup')
+        LOG.debug_info('cleanup')
         self.prefs.save()
         spui.delete_ui_element(self.dock)
 
     def build_panel(self):
         """Build the UI"""
-        LOG.info('build_panel')
+        LOG.debug_info('build_panel')
         # Create a simple text widget
         root = QWidget(None, Qt.Window)
         root.setWindowTitle("RenderMan")
@@ -221,16 +239,14 @@ class RenderManForSP(object):
                     # render previews
                     self.hostTree = ''
                     self.rmanTree = self.prefsobj.get('RMANTREE', '')
-                    #     LOG.info('prefs data loaded')
-                    # self._print()
-                    # LOG.info('SPrefs object created')
+                    LOG.debug_info('SPrefs object created')
 
-                def getHostPref(self, prefName, defaultValue):
-                    return self.prefsobj.get(prefName, defaultValue)
+                def getHostPref(self, pref_name, default_value):
+                    return self.prefsobj.get(pref_name, default_value)
 
-                def setHostPref(self, prefName, value):
+                def setHostPref(self, pref_name, value):
                     prefs = self.prefsobj.get('host_prefs', {})
-                    prefs[prefName] = value
+                    prefs[pref_name] = value
                     self.prefsobj.set('host_prefs', prefs)
                     # self._print()
 
@@ -240,7 +256,7 @@ class RenderManForSP(object):
                     # self._print()
 
                 def preExportCheck(self, mode, hdr=None):
-                    # LOG.info('preExportCheck: %r, hdr=%r', mode, hdr)
+                    LOG.debug_info('preExportCheck: %r, hdr=%r', mode, hdr)
                     if mode == 'material':
                         try:
                             self._defaultLabel = spp.name() or 'UNTITLED'
@@ -255,12 +271,16 @@ class RenderManForSP(object):
                     return False
 
                 def exportMaterial(self, categorypath, infodict, previewtype):
-                    LOG.info('exportMaterial: %r, %r, %r', categorypath, infodict, previewtype)
+                    LOG.debug_info(
+                        'exportMaterial: %r, %r, %r', categorypath, infodict,
+                        previewtype)
                     #
                     _bxdf = self.opt_bxdf.currentText()
-                    _ocio = self.opt_ocio.currentText()
                     self.prefsobj.set('last bxdf', _bxdf)
-                    LOG.info('chosen bxdf: %s', _bxdf)
+                    LOG.debug_info('chosen bxdf: %s', _bxdf)
+                    _ocio = self.opt_ocio.currentText()
+                    self.prefsobj.set('ocio config', _ocio)
+                    LOG.debug_info('chosen ocio config: %s', _ocio)
                     # setup data
                     bxdf_rules = self.rules['models'][_bxdf]
                     mappings = bxdf_rules['mapping']
@@ -288,12 +308,12 @@ class RenderManForSP(object):
 
                         # chans = mat.get_stack().all_channels()
                         chans = self.textureset_channels(mat)
-                        LOG.info('+ Exporting %s', label)
+                        LOG.debug_info('+ Exporting %s', label)
 
                         asset_path = export_path.join(label + '.rma')
-                        LOG.info('  + asset_path %s', asset_path)
+                        LOG.debug_info('  + asset_path %s', asset_path)
                         asset_json_path = asset_path.join('asset.json')
-                        LOG.info('  + asset_json_path %s', asset_json_path)
+                        LOG.debug_info('  + asset_json_path %s', asset_json_path)
 
                         # create asset directory
                         create_directory(asset_path)
@@ -316,13 +336,13 @@ class RenderManForSP(object):
                         asset.addNode(root_node, 'shadingEngine', 'root', 'shadingEngine')
                         pdict = {'type': 'reference float[]', 'value': None}
                         asset.addParam(root_node, 'surfaceShader', pdict)
-                        LOG.info('  + Root node: %s', root_node)
+                        LOG.debug_info('  + Root node: %s', root_node)
 
                         # add a disney, pixar or lama bxdf
                         #
                         bxdf_node = label + "_Srf"
                         asset.addNode(bxdf_node, _bxdf, 'bxdf', _bxdf)
-                        LOG.info('  + BxDF node: %s  (%s)', root_node, _bxdf)
+                        LOG.debug_info('  + BxDF node: %s  (%s)', root_node, _bxdf)
 
                         # The bxdf may need specific settings to match Substance Painter
                         set_params(settings, 'bxdf', bxdf_node, asset)
@@ -335,29 +355,33 @@ class RenderManForSP(object):
                         # build additional nodes if need be.
                         #
                         if graph:
-                            LOG.info('  + Create graph nodes...')
+                            LOG.debug_info('  + Create graph nodes...')
                             for nname, ndict in graph['nodes'].items():
                                 lname = label + nname
                                 asset.addNode(lname, ndict['nodetype'],
                                               ndict.get('category', 'pattern'),
                                               ndict['nodetype'])
-                                LOG.info('    |_ %s  (%s)', lname, ndict['nodetype'])
+                                LOG.debug_info(
+                                    '    |_ %s  (%s)', lname, ndict['nodetype'])
                                 if 'params' in ndict:
                                     for pname, pdict in ndict['params'].items():
                                         asset.addParam(lname, pname, pdict)
-                                        LOG.info('       |_ param: %s %s = %s',
-                                                 pdict['type'], pname, pdict['value'])
+                                        LOG.debug_info(
+                                            '       |_ param: %s %s = %s',
+                                            pdict['type'], pname, pdict['value'])
 
                         # create texture nodes
-                        LOG.info('  + Create texture nodes...')
+                        LOG.debug_info('  + Create texture nodes...')
                         chan_nodes = {}
                         for ch_type in chans:
                             fpath_list = self.spx_exported_files[mat.name()].get(ch_type, None)
                             if fpath_list is None:
-                                LOG.warning('    |_ tex_dict[%r][%r] failed', mat.name(), ch_type)
+                                LOG.debug_warning(
+                                    '    |_ tex_dict[%r][%r] failed', mat.name(),
+                                    ch_type)
                                 continue
                             node_name = "%s_%s_tex" % (label, ch_type)
-                            LOG.info('    |_ %s', node_name)
+                            LOG.debug_info('    |_ %s', node_name)
                             chan_nodes[ch_type] = node_name
                             fpath = self.txmake(is_udim, asset_path, fpath_list)
                             if ch_type == 'Normal':
@@ -372,10 +396,10 @@ class RenderManForSP(object):
 
                         # make direct connections
                         #
-                        LOG.info('  + Direct connections...')
+                        LOG.debug_info('  + Direct connections...')
                         for ch_type in chans:
                             if not ch_type in mappings:
-                                LOG.warning('    |_ skipped %r', ch_type)
+                                LOG.debug_warning('    |_ skipped %r', ch_type)
                                 continue
                             src = None
                             dst_type = mappings[ch_type]['type']
@@ -391,23 +415,24 @@ class RenderManForSP(object):
                                 if dst_param != 'graph':
                                     # connections with a graph type will be handled later, so
                                     # we don't warn in that case.
-                                    LOG.warning('WARNING: Not connecting: %s', ch_type)
+                                    LOG.debug_warning('WARNING: Not connecting: %s', ch_type)
                                 continue
                             if dst_param == 'graph':
                                 continue
                             dst = '%s.%s' % (bxdf_node, dst_param)
                             asset.addConnection(src, dst)
-                            LOG.info('    |_ connect: %s -> %s' % (src, dst))
+                            LOG.debug_info('    |_ connect: %s -> %s' % (src, dst))
                             # also tag the bxdf param as connected
                             pdict = {'type': 'reference ' + dst_type, 'value': None}
                             asset.addParam(bxdf_node, dst_param, pdict)
-                            LOG.info('       |_ param: %s %s -> %s', pdict['type'],
-                                     dst_param, pdict['value'])
+                            LOG.debug_info(
+                                '       |_ param: %s %s -> %s', pdict['type'],
+                                dst_param, pdict['value'])
 
                         # make graph connections
                         #
                         if graph and 'connections' in graph:
-                            LOG.info('  + Connect graph nodes...')
+                            LOG.debug_info('  + Connect graph nodes...')
                             for con in graph['connections']:
 
                                 src_node = con['src']['node']
@@ -438,18 +463,19 @@ class RenderManForSP(object):
                                     dst_node = label + dst_node
                                 dst = '%s.%s' % (dst_node, con['dst']['param'])
                                 asset.addConnection(src, dst)
-                                LOG.info('    |_ connect: %s -> %s', src, dst)
+                                LOG.debug_info('    |_ connect: %s -> %s', src, dst)
                                 # mark param as a connected
                                 dstType = con['dst']['type']
                                 pdict = {'type': 'reference %s' % dstType, 'value': None}
                                 asset.addParam(dst_node, con['dst']['param'], pdict)
-                                LOG.info('       |_ param: %s %s = %s',
-                                         pdict['type'], con['dst']['param'],
-                                         pdict['value'])
+                                LOG.debug_info(
+                                    '       |_ param: %s %s = %s',
+                                    pdict['type'], con['dst']['param'],
+                                    pdict['value'])
 
                         # save asset
                         #
-                        LOG.info('  + ready to save: %s' % asset_json_path)
+                        LOG.debug_info('  + ready to save: %s' % asset_json_path)
                         try:
                             asset.save(asset_json_path, False)
                         except:
@@ -493,9 +519,9 @@ class RenderManForSP(object):
                                 except (OSError, IOError):
                                     LOG.error('Cleanup failed: %s' % fpath)
                                 else:
-                                    LOG.info('Cleanup: %s' % fpath)
+                                    LOG.debug_info('Cleanup: %s' % fpath)
 
-                    LOG.info('RenderMan : Done !')
+                    LOG.debug_info('RenderMan : Done !')
                     return True
 
                 def addUiExportOptions(self, top_layout, mode):
@@ -527,8 +553,9 @@ class RenderManForSP(object):
                     prefs = self.prefsobj.get('host_prefs', {})
                     loaded = ['\t%s: %s\n' % (k, prefs[k]) for k in prefs]
                     state = ['\t%s: %s\n' % (k, getattr(self, k)) for k in self.saved]
-                    LOG.info('%r ------------------------\nLOADED:\n%s\nSTATE:\n%s', self,
-                             ''.join(loaded), ''.join(state))
+                    LOG.debug_info(
+                        '%r ------------------------\nLOADED:\n%s\nSTATE:\n%s', self,
+                        ''.join(loaded), ''.join(state))
 
                 def _load_rules(self):
                     fpath = FilePath(root_dir()).join('renderman_rules.json')
@@ -543,7 +570,8 @@ class RenderManForSP(object):
                 def set_metadata(self, asset, sp_ts):
                     meta = asset.stdMetadata()
                     meta['author'] = getpass.getuser()
-                    meta['description'] = 'Created by RenderMan for Substance Painter 0.3.0'
+                    meta['description'] = ('Created by RenderMan for Substance '
+                                           'Painter %s' % __version__)
                     res = sp_ts.get_resolution()
                     meta['resolution'] = '%d x %d' %  (res.width, res.height)
                     for k, v in meta.items():
@@ -555,7 +583,7 @@ class RenderManForSP(object):
                         hostName='Substance Painter',
                         hostVersion=sp.__version__,
                         rendererVersion=str(self.rman_version))
-                    LOG.info('  + compatibility set')
+                    LOG.debug_info('  + compatibility set')
 
                 def sp_export(self, export_path):
                     tset_names = [s.name() for s in spts.all_texture_sets()]
@@ -571,21 +599,20 @@ class RenderManForSP(object):
                     if result.status != spex.ExportStatus.Success:
                         LOG.error(result.message)
                         raise RuntimeError(result.message)
-                    LOG.info('+ Exported --------------------------------------------')
+                    LOG.debug_info('+ Exported --------------------------------------------')
                     self.spx_exported_files = {}
                     for stack, texs in result.textures.items():
-                        LOG.info('  |_ Stack %s: ', stack)
+                        LOG.debug_info('  |_ Stack %s: ', stack)
                         stck_name = stack[0]
                         self.spx_exported_files[stck_name] = {}
                         for t in texs:
-                            LOG.info('     |_ %s', t)
+                            LOG.debug_info('     |_ %s', t)
                             if t:
                                 ch_type = re.search(r'_([A-Za-z]+)(\.\d{4})*\.\w{3}$', t).group(1)
                                 if ch_type in self.spx_exported_files[stck_name]:
                                     self.spx_exported_files[stck_name][ch_type].append(t)
                                 else:
                                     self.spx_exported_files[stck_name][ch_type] = [t]
-                    # print_dict(self.spx_exported_files, msg='spx_exported_files:\n')
 
                 def textureset_channels(self, spts_textureset):
                     result = {}
@@ -594,9 +621,7 @@ class RenderManForSP(object):
                     for chan_type in chans:
                         if ts_name in self.spx_exported_files:
                             ch = chan_type_str(chan_type)
-                            # ch_files = [f for f in self.spx_exported_files[ts_name] if ch in f]
                             result[chan_type_str(chan_type)] = self.spx_exported_files[ts_name].get(ch, [])
-                    # print_dict(result, msg='[textureset_channels]  %s:\n' % ts_name)
                     return result
 
                 def txmake(self, is_udim, asset_path, fpath_list):
@@ -624,10 +649,11 @@ class RenderManForSP(object):
                         filename = img.basename()
                         texfile = os.path.splitext(filename)[0] + '.tex'
                         cmd[-1] = asset_path.join(texfile).os_path()
-                        LOG.info('       |_ txmake : %s -> %s', cmd[-2], cmd[-1])
+                        LOG.debug_info('       |_ txmake : %s -> %s',
+                                       cmd[-2], cmd[-1])
                         p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
                                              stderr=subprocess.PIPE,
-                                             startupinfo=startupInfo())
+                                             startupinfo=startup_info())
                         p.wait()
 
                     # return a local path to the tex file.
@@ -647,7 +673,7 @@ class RenderManForSP(object):
             else:
                 root.setLayout(self.aui.topLayout)
 
-        LOG.info('  |_ done')
+        LOG.debug_info('  |_ done')
         return root, dock
 
 
@@ -702,9 +728,9 @@ def create_directory(dir_path):
         except (OSError, IOError):
             LOG.error('Asset directory could not be created !')
             raise
-        LOG.info('  + Created dir: %s', dir_path)
+        LOG.debug_info('  + Created dir: %s', dir_path)
     else:
-        LOG.info('  + dir exists: %s', dir_path)
+        LOG.debug_info('  + dir exists: %s', dir_path)
 
 
 def set_params(settings_dict, chan, node_name, asset):
@@ -716,33 +742,31 @@ def set_params(settings_dict, chan, node_name, asset):
     else:
         for pname, pdict in params.items():
             asset.addParam(node_name, pname, pdict)
-            LOG.info('       |_ param: %s %s = %s', pdict['type'], pname, pdict['value'])
+            LOG.debug_info('       |_ param: %s %s = %s', pdict['type'],
+                           pname, pdict['value'])
 
 
 def add_texture_node(asset, node_name, ntype, filepath):
     asset.addNode(node_name, ntype, 'pattern', ntype)
     pdict = {'type': 'string', 'value': filepath.basename()}
     asset.addParam(node_name, 'filename', pdict)
-    # if '_MAPID_' in filepath:
-    #     asset.addParam(node_name, 'atlasStyle', {'type': 'int', 'value': 1})
 
 
 def chan_type_str(channel_type):
     return str(channel_type).split('.')[-1]
-    # return str(channel_type).split('.')[-1].lower()
 
 
 def print_dict(some_dict, msg=''):
-    LOG.info(msg + json.dumps(some_dict, indent=4))
+    LOG.debug_info(msg + json.dumps(some_dict, indent=4))
 
 
 def app(name):
     if os.name is 'nt':
-        return (name + '.exe')
+        return name + '.exe'
     return name
 
 
-def startupInfo():
+def startup_info():
     """Returns a Windows-only object to make sure tasks launched through
     subprocess don't open a cmd window.
 
