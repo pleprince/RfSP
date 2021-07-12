@@ -4,31 +4,43 @@
             "mapping": {
                 "BaseColor": {
                     "param": "baseColor",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Specular": {
                     "param": "specular",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "srgb_texture"
                 },
                 "Roughness": {
                     "param": "roughness",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Metallic": {
                     "param": "metallic",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Opacity": {
                     "param": null,
-                    "type": null
+                    "type": null,
+                    "ocio": "data"
                 },
                 "Emissive": {
                     "param": "emitColor",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Normal": {
                     "param": "bumpNormal",
-                    "type": "normal"
+                    "type": "normal",
+                    "ocio": "data"
+                },
+                "Height": {
+                    "param": null,
+                    "type": null,
+                    "ocio": "data"
                 }
             },
             "settings": {
@@ -84,31 +96,43 @@
             "mapping": {
                 "BaseColor": {
                     "param": "graph",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Specular": {
                     "param": "graph",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Roughness": {
                     "param": "specularRoughness",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Metallic": {
                     "param": "graph",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Opacity": {
-                    "param": null,
-                    "type": null
+                    "param": "presence",
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Emissive": {
                     "param": "glowColor",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Normal": {
                     "param": "bumpNormal",
-                    "type": "normal"
+                    "type": "normal",
+                    "ocio": "data"
+                },
+                "Height": {
+                    "param": null,
+                    "type": null,
+                    "ocio": "data"
                 }
             },
             "graph": {
@@ -356,31 +380,43 @@
             "mapping": {
                 "BaseColor": {
                     "param": "graph",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Specular": {
                     "param": "graph",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Roughness": {
                     "param": "graph",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Metallic": {
                     "param": "graph",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Opacity": {
                     "param": "presence",
-                    "type": "float"
+                    "type": "float",
+                    "ocio": "data"
                 },
                 "Emissive": {
                     "param": "graph",
-                    "type": "color"
+                    "type": "color",
+                    "ocio": "srgb_texture"
                 },
                 "Normal": {
                     "param": "graph",
-                    "type": "normal"
+                    "type": "normal",
+                    "ocio": "data"
+                },
+                "Height": {
+                    "param": null,
+                    "type": null,
+                    "ocio": "data"
                 }
             },
             "graph": {
@@ -580,6 +616,18 @@
                         }
                     }
                 ]
+            },
+            "settings": {
+                "Normal": {
+                    "orientation": {
+                        "type": "int",
+                        "value": 1
+                    },
+                    "adjustAmount": {
+                        "type": "float",
+                        "value": 1.0
+                    }
+                }
             }
         }
     },

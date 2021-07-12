@@ -28,7 +28,9 @@ Export substance painter maps to a RenderMan Asset package.
 
 # TODO: Colorspace txmake
 # TODO: remove non-exportable channels for def.
-# pylint: disable=missing-docstring
+# TODO: export progress dialog
+# TODO: name textures with color spaces
+# pylint: disable=missing-docstring,invalid-name
 
 import os
 import sys
@@ -41,19 +43,11 @@ import getpass
 import re
 import subprocess
 import shutil
-# from functools import partial
 # from PySide2 import (QtWidgets, QtGui, QtCore)  # pylint: disable=import-error
 from PySide2.QtCore import (QResource, Qt)   # pylint: disable=import-error
 from PySide2.QtGui import (QIcon)   # pylint: disable=import-error
 from PySide2.QtWidgets import (
     QWidget,
-    # QHBoxLayout,
-    # QVBoxLayout,
-    # QLabel,
-    # QLineEdit,
-    # QToolButton,
-    # QPushButton,
-    # QFrame,
     QMessageBox,
     QFileDialog,
     QFormLayout,
@@ -76,36 +70,37 @@ MIN_SP_API = '0.1.0'
 class Log(object):
     def __init__(self, loglevel=spl.ERROR):
         self.channel = 'RenderMan %s' % __version__
-        self.loglevel = loglevel
+        self.loglevel = int(loglevel)
+        self.info('Log Level: %s (%s)', loglevel, self.loglevel)
         pyv = sys.version_info
         self.info('SP python: %d.%d.%d', *tuple(pyv[0:3]))
 
-    def debug_error(self, msg, *args):          # 6
-        if self.loglevel >= spl.DBG_ERROR:
-            spl.log(spl.DBG_ERROR, self.channel, msg % args)
+    def debug_error(self, msg, *args):
+        if self.loglevel >= int(spl.DBG_ERROR):     # 5
+            spl.log(spl.ERROR, self.channel, msg % args)
 
     def debug_warning(self, msg, *args):
-        if self.loglevel >= spl.DBG_WARNING:    # 4
-            spl.log(spl.DBG_WARNING, self.channel, msg % args)
+        if self.loglevel >= int(spl.DBG_WARNING):    # 4
+            spl.log(spl.WARNING, self.channel, msg % args)
 
     def debug_info(self, msg, *args):
-        if self.loglevel >= spl.DBG_INFO:       # 3
-            spl.log(spl.DBG_INFO, self.channel, msg % args)
+        if self.loglevel >= int(spl.DBG_INFO):       # 3
+            spl.log(spl.INFO, self.channel, msg % args)
 
     def error(self, msg, *args):
-        if self.loglevel >= spl.ERROR:          # 2
+        if self.loglevel >= int(spl.ERROR):          # 2
             spl.log(spl.ERROR, self.channel, msg % args)
 
     def warning(self, msg, *args):
-        if self.loglevel >= spl.WARNING:        # 1
+        if self.loglevel >= int(spl.WARNING):        # 1
             spl.log(spl.WARNING, self.channel, msg % args)
 
     def info(self, msg, *args):
-        if self.loglevel >= spl.INFO:           # 0
+        if self.loglevel >= int(spl.INFO):           # 0
             spl.log(spl.INFO, self.channel, msg % args)
 
 
-LOG = Log(loglevel=spl.ERROR)
+LOG = Log(loglevel=spl.DBG_ERROR)
 
 
 def root_dir():
@@ -236,6 +231,8 @@ class RenderManForSP(object):
                     self.spx_exported_files = {}
                     self.opt_bxdf = None
                     self.opt_ocio = None
+                    self._defaultLabel = 'UNTITLED'
+                    self.ocio_config = {'config': None, 'path': None}
                     # render previews
                     self.hostTree = ''
                     self.rmanTree = self.prefsobj.get('RMANTREE', '')
@@ -279,6 +276,12 @@ class RenderManForSP(object):
                     self.prefsobj.set('last bxdf', _bxdf)
                     LOG.debug_info('chosen bxdf: %s', _bxdf)
                     _ocio = self.opt_ocio.currentText()
+                    self.ocio_config['config'] = _ocio
+                    if _ocio == '$OCIO':
+                        self.ocio_config['path'] = FilePath(os.environ['OCIO'])
+                    elif _ocio != 'Off':
+                        self.ocio_config['path'] = FilePath(self.rmanTree).join(
+                            'lib', 'ocio', _ocio, 'config.ocio')
                     self.prefsobj.set('ocio config', _ocio)
                     LOG.debug_info('chosen ocio config: %s', _ocio)
                     # setup data
@@ -288,8 +291,9 @@ class RenderManForSP(object):
                     settings = bxdf_rules.get('settings', None)
                     scene = infodict['label']
 
-                    # we save the assets to SP's export directory, because we know it is writable.
-                    # We will move them to the requested location later.
+                    # we save the assets to SP's export directory, because we
+                    # know it is writable. We will move them to the requested
+                    # location later.
                     export_path = FilePath(tempfile.mkdtemp(prefix='rfsp_export_'))
 
                     # export project textures
@@ -324,6 +328,8 @@ class RenderManForSP(object):
                         except Exception:
                             LOG.error('Asset creation failed')
                             raise
+
+                        asset.ocio = self.ocio_config
 
                         # create standard metadata
                         #
@@ -383,7 +389,9 @@ class RenderManForSP(object):
                             node_name = "%s_%s_tex" % (label, ch_type)
                             LOG.debug_info('    |_ %s', node_name)
                             chan_nodes[ch_type] = node_name
-                            fpath = self.txmake(is_udim, asset_path, fpath_list)
+                            colorspace = mappings[ch_type]['ocio']
+                            fpath = self.txmake(is_udim, asset_path, fpath_list,
+                                                self.ocio_config, colorspace)
                             if ch_type == 'Normal':
                                 add_texture_node(asset, node_name, 'PxrNormalMap', fpath)
                             elif ch_type == 'Height':
@@ -537,7 +545,8 @@ class RenderManForSP(object):
                         lyt.addRow('BxDF :', self.opt_bxdf)
                         # color space
                         self.opt_ocio = QComboBox()
-                        self.opt_ocio.addItems(['Off', 'ACES-1.2', 'Filmic-Blender'])
+                        self.opt_ocio.addItems(['Off', 'ACES-1.2',
+                                                'filmic-blender', '$OCIO'])
                         lyt.addRow('Color configuration :', self.opt_ocio)
                         # add to parent layout
                         top_layout.addLayout(lyt)
@@ -621,10 +630,12 @@ class RenderManForSP(object):
                     for chan_type in chans:
                         if ts_name in self.spx_exported_files:
                             ch = chan_type_str(chan_type)
-                            result[chan_type_str(chan_type)] = self.spx_exported_files[ts_name].get(ch, [])
+                            result[chan_type_str(chan_type)] = \
+                                self.spx_exported_files[ts_name].get(ch, [])
                     return result
 
-                def txmake(self, is_udim, asset_path, fpath_list):
+                def txmake(self, is_udim, asset_path, fpath_list, ocio_config,
+                           ocio_colorspace):
 
                     rmantree = FilePath(os.environ['RMANTREE'])
                     binary = rmantree.join('bin', app('txmake')).os_path()
@@ -632,17 +643,20 @@ class RenderManForSP(object):
                     if is_udim:
                         cmd += ['-resize', 'round-',
                                 '-mode', 'clamp',
-                                '-format', 'pixar',
-                                '-compression', 'lossless',
-                                '-newer',
-                                'src', 'dst']
+                                '-format', 'openexr',
+                                '-compression', 'pxr24',
+                                '-newer']
                     else:
                         cmd += ['-resize', 'round-',
                                 '-mode', 'periodic',
-                                '-format', 'pixar',
-                                '-compression', 'lossless',
-                                '-newer',
-                                'src', 'dst']
+                                '-format', 'openexr',
+                                '-compression', 'pxr24',
+                                '-newer']
+                    if ocio_config['path']:
+                        cmd += ['-ocioconfig', ocio_config['path'],
+                                '-ocioconvert', ocio_colorspace, 'rendering']
+                    cmd += ['src', 'dst']
+                    LOG.debug_info('       |_ cmd = %r', ' '.join(cmd))
                     for img in fpath_list:
                         img = FilePath(img)
                         cmd[-2] = img.os_path()
@@ -794,8 +808,7 @@ def msg_box(msg, infos, buttons, default_button):
 
 def start_plugin():
     """This method is called when the plugin is started."""
-    import substance_painter
-    if substance_painter.__version__ < MIN_SP_API:
+    if sp.__version__ < MIN_SP_API:
         raise RuntimeError(
             'RenderMan for Substance Painter requires python API %s+ !' % MIN_SP_API)
     setattr(start_plugin, 'obj', RenderManForSP())
