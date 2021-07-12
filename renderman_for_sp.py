@@ -27,7 +27,6 @@ Export substance painter maps to a RenderMan Asset package.
 # -----------------------------------------------------------------------------
 
 # TODO: dialogs for unsupported stuff
-# TODO: Colorspace UI
 # TODO: Colorspace txmake
 # TODO: ERROR if RPS version < 24.1
 # TODO: File picker to RMANTREE
@@ -58,7 +57,7 @@ from PySide2.QtWidgets import (
     # QToolButton,
     # QPushButton,
     # QFrame,
-    # QSizePolicy,
+    QMessageBox,
     QFileDialog,
     QFormLayout,
     QComboBox
@@ -72,7 +71,9 @@ import substance_painter.textureset as spts # pylint: disable=import-error
 import substance_painter.export as spex     # pylint: disable=import-error
 
 
-__version__ = '2.0.0a1'
+__version__ = '24.1.0'
+MIN_RPS = '24.1'
+MIN_SP_API = '0.1.0'
 
 
 class Log():
@@ -652,10 +653,40 @@ class RenderManForSP(object):
         return root, dock
 
 
+def pick_rmantree():
+    rmantree = QFileDialog.getExistingDirectory(
+        None,
+        caption='Select your RenderManProServer %s+ directory' % MIN_RPS)
+    if not 'RenderManProServer-' in rmantree:
+        ret = msg_box(
+            'This is not a RenderManProServer directory !',
+            'This software needs RendermanProServer-%s+ to run.' % MIN_RPS,
+            QMessageBox.Abort | QMessageBox.Retry, QMessageBox.Retry)
+        if ret == QMessageBox.Abort:
+            raise RuntimeError('This is not a RenderMan Pro Server directory')
+        else:
+            return pick_rmantree()
+    return rmantree
+
+
 def env_check(prefs):
-    rmantree = prefs.get('RMANTREE', '')
+    rmantree = prefs.get('RMANTREE', None)
+    if rmantree is None or not os.path.exists(rmantree):
+        rmantree = pick_rmantree()
+        prefs.set('RMANTREE', rmantree)
+    # check the version
+    rps_version = re.search(r'RenderManProServer-([\d]+)', rmantree).group(1)
+    if rps_version < MIN_RPS:
+        ret = msg_box(
+            'RenderMan version too old !',
+            'This software needs RendermanProServer-%s+ to run.' % MIN_RPS,
+            QMessageBox.Abort | QMessageBox.Retry, QMessageBox.Retry)
+        if ret == QMessageBox.Retry:
+            return env_check(prefs)
+        raise RuntimeError(
+            'This software needs RendermanProServer-%s+ to run.' % MIN_RPS)
+
     LOG.info('RMANTREE = %r', rmantree)
-    # TODO: open file chooser
     os.environ['RMANTREE'] = rmantree
     rmp_path = os.path.join(rmantree, 'lib', 'python3.7', 'site-packages')
     if rmp_path not in sys.path:
@@ -663,7 +694,7 @@ def env_check(prefs):
     rmu_path = os.path.join(rmantree, 'bin')
     if rmu_path not in sys.path:
         sys.path.append(rmu_path)
-    return re.search(r'RenderManProServer-([\d]+)', rmantree).group(1)
+    return rps_version
 
 
 def create_directory(dir_path):
@@ -728,10 +759,23 @@ def startupInfo():
     return startupinfo
 
 
+def msg_box(msg, infos, buttons, default_button):
+    wdgt = QMessageBox()
+    wdgt.setText(msg)
+    wdgt.setInformativeText(infos)
+    wdgt.setStandardButtons(buttons)
+    wdgt.setDefaultButton(default_button)
+    return wdgt.exec_()
+
+
 # -----------------------------------------------------------------------------
 
 def start_plugin():
     """This method is called when the plugin is started."""
+    import substance_painter
+    if substance_painter.__version__ < MIN_SP_API:
+        raise RuntimeError(
+            'RenderMan for Substance Painter requires python API %s+ !' % MIN_SP_API)
     setattr(start_plugin, 'obj', RenderManForSP())
     LOG.info('RenderMan started')
 
