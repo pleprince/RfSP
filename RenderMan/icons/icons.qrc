@@ -1,0 +1,12 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+    <qresource>
+        <file>PxrDisney_hover.svg</file>
+        <file>PxrDisney_idle.svg</file>
+        <file>PxrSurface_hover.svg</file>
+        <file>PxrSurface_idle.svg</file>
+        <file>folder.svg</file>
+        <file>R_logo.svg</file>
+        <file>R_logo_white.svg</file>
+    </qresource>
+</RCC>

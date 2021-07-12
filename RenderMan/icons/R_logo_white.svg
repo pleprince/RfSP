@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   version="1.1"
+   id="svg4249"
+   inkscape:version="1.0.2 (e86c8708, 2021-01-15)"
+   sodipodi:docname="R_logo_white.svg"
+   x="0px"
+   y="0px"
+   viewBox="0 0 28.3 28.3"
+   style="enable-background:new 0 0 28.3 28.3;"
+   xml:space="preserve"><metadata
+   id="metadata841"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /><dc:title></dc:title></cc:Work></rdf:RDF></metadata><defs
+   id="defs839" />
+<style
+   type="text/css"
+   id="style833">
+	.st0{fill:#0099FF;}
+</style>
+<sodipodi:namedview
+   bordercolor="#666666"
+   borderopacity="1.0"
+   id="base"
+   inkscape:current-layer="svg4249"
+   inkscape:cx="17.716535"
+   inkscape:cy="17.716535"
+   inkscape:document-units="px"
+   inkscape:pageopacity="0.0"
+   inkscape:pageshadow="2"
+   inkscape:window-height="1108"
+   inkscape:window-maximized="0"
+   inkscape:window-width="1658"
+   inkscape:window-x="38"
+   inkscape:window-y="46"
+   inkscape:zoom="12.951525"
+   pagecolor="#ffffff"
+   showgrid="false"
+   inkscape:document-rotation="0">
+	</sodipodi:namedview>
+<path
+   class="st0"
+   d="m 20.368048,18.283656 c 0,0 4.95336,-1.897036 4.95336,-7.904303 0,-5.5857005 -4.95336,-8.6420289 -9.695938,-8.7474199 -4.742583,-0.1053904 -13.7007841,0 -13.7007841,0 V 26.714906 h 8.4312481 v -7.061174 h 1.68625 l 4.847971,7.061174 h 9.485158 z M 14.676953,13.646464 H 10.145159 V 8.693106 h 4.426402 c 0,0 2.318594,0.1053907 2.423988,2.529373 0.105387,2.423985 -2.318596,2.423985 -2.318596,2.423985 z"
+   id="path836"
+   style="stroke:none;stroke-width:2;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke fill markers;fill:#ffffff;fill-opacity:1" />
+</svg>
