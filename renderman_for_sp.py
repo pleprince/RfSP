@@ -100,7 +100,7 @@ class Log(object):
             spl.log(spl.INFO, self.channel, msg % args)
 
 
-LOG = Log(loglevel=spl.DBG_ERROR)
+LOG = Log(loglevel=spl.ERROR)
 
 
 def root_dir():
