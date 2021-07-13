@@ -31,5 +31,6 @@ This plugin will NOT work without the following software:
 
 ## Known Issues
 
-* No progress indication during export: be patient !
-  * It takes time to export the maps and turn them into textures. The plugin will print a message in the log when done.
+* Need to add anisotropy support
+* Converted textures' names do not contain the source and destination colorspace.
+* When a SP project doesn't define one of the expected channels, SP will issue a warning.
