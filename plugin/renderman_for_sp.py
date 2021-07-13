@@ -52,7 +52,9 @@ from PySide2.QtWidgets import (
     QMessageBox,
     QFileDialog,
     QFormLayout,
-    QComboBox
+    QComboBox,
+    QProgressDialog,
+    QApplication
     )   # pylint: disable=import-error
 import substance_painter as sp              # pylint: disable=import-error
 import substance_painter.ui as spui         # pylint: disable=import-error
@@ -230,6 +232,8 @@ class RenderManForSP(object):
                                     FilePath(f) for f in self.rpbUserLibraries]
                     # export vars
                     self.spx_exported_files = {}
+                    self.spx_num_textures = 0
+                    self.spx_progress = None
                     self.opt_bxdf = None
                     self.opt_ocio = None
                     self._defaultLabel = 'UNTITLED'
@@ -299,6 +303,13 @@ class RenderManForSP(object):
 
                     # export project textures
                     self.sp_export(export_path)
+
+                    # open progress dialog
+                    self.spx_progress = QProgressDialog(
+                        'Converting textures...', 'Cancel',
+                        0, self.spx_num_textures - 1)
+                    self.spx_progress.setMinimumDuration(1)
+                    QApplication.processEvents()
 
                     # list of spts.TextureSet objects
                     tset_list = spts.all_texture_sets()
@@ -530,6 +541,12 @@ class RenderManForSP(object):
                                 else:
                                     LOG.debug_info('Cleanup: %s' % fpath)
 
+                    # cleanup progress dialog
+                    self.spx_progress.close()
+                    del self.spx_progress
+                    self.spx_progress = None
+                    QApplication.processEvents()
+
                     LOG.debug_info('RenderMan : Done !')
                     return True
 
@@ -611,6 +628,7 @@ class RenderManForSP(object):
                         raise RuntimeError(result.message)
                     LOG.debug_info('+ Exported --------------------------------------------')
                     self.spx_exported_files = {}
+                    self.spx_num_textures = 0
                     for stack, texs in result.textures.items():
                         LOG.debug_info('  |_ Stack %s: ', stack)
                         stck_name = stack[0]
@@ -623,6 +641,7 @@ class RenderManForSP(object):
                                     self.spx_exported_files[stck_name][ch_type].append(t)
                                 else:
                                     self.spx_exported_files[stck_name][ch_type] = [t]
+                                self.spx_num_textures += 1
 
                 def textureset_channels(self, spts_textureset):
                     result = {}
@@ -660,6 +679,9 @@ class RenderManForSP(object):
                     LOG.debug_info('       |_ cmd = %r', ' '.join(cmd))
                     for img in fpath_list:
                         img = FilePath(img)
+                        self.spx_progress.setLabelText(
+                            '  Converting %s...  ' % img.basename())
+                        QApplication.processEvents()
                         cmd[-2] = img.os_path()
                         filename = img.basename()
                         texfile = os.path.splitext(filename)[0] + '.tex'
@@ -670,7 +692,9 @@ class RenderManForSP(object):
                                              stderr=subprocess.PIPE,
                                              startupinfo=startup_info())
                         p.wait()
-
+                        # update progress dialog
+                        self.spx_progress.setValue(self.spx_progress.value() + 1)
+                        QApplication.processEvents()
                     # return a local path to the tex file.
                     filename = FilePath(fpath_list[0]).basename()
                     fname, _ = os.path.splitext(filename)
