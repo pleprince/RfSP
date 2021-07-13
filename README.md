@@ -1,6 +1,6 @@
 # RfSP
 
-## RenderMan for Substance Painter 2.x
+## RenderMan for Substance Painter 24.1
 
 This plugin exports your [Substance Painter](https://www.allegorithmic.com/products/substance-painter) project as one or more RenderManAsset.
 
