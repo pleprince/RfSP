@@ -29,9 +29,8 @@ Export substance painter maps to a RenderMan Asset package.
 # TODO: make sure the normals are in directX format
 # TODO: remove non-exportable channels for def.
 # TODO: add anisotropy
-# TODO: export progress dialog
 # TODO: name textures with color spaces
-# pylint: disable=missing-docstring,invalid-name
+# pylint: disable=missing-docstring,invalid-name,import-error
 
 import os
 import sys
@@ -44,9 +43,8 @@ import getpass
 import re
 import subprocess
 import shutil
-# from PySide2 import (QtWidgets, QtGui, QtCore)  # pylint: disable=import-error
-from PySide2.QtCore import (QResource, Qt)   # pylint: disable=import-error
-from PySide2.QtGui import (QIcon)   # pylint: disable=import-error
+from PySide2.QtCore import (QResource, Qt)
+from PySide2.QtGui import (QIcon)
 from PySide2.QtWidgets import (
     QWidget,
     QMessageBox,
@@ -55,14 +53,13 @@ from PySide2.QtWidgets import (
     QComboBox,
     QProgressDialog,
     QApplication
-    )   # pylint: disable=import-error
-import substance_painter as sp              # pylint: disable=import-error
-import substance_painter.ui as spui         # pylint: disable=import-error
-import substance_painter.logging as spl     # pylint: disable=import-error
-import substance_painter.project as spp     # pylint: disable=import-error
-import substance_painter.textureset as spts # pylint: disable=import-error
-# import substance_painter.resource as spr    # pylint: disable=import-error
-import substance_painter.export as spex     # pylint: disable=import-error
+    )
+import substance_painter as sp
+import substance_painter.ui as spui
+import substance_painter.logging as spl
+import substance_painter.project as spp
+import substance_painter.textureset as spts
+import substance_painter.export as spex
 
 
 __version__ = '24.1.0'
@@ -190,7 +187,6 @@ class RenderManForSP(object):
         # preset browser
         rman_version_str = env_check(self.prefs)
         try:
-            import rman_utils.rman_assets as ra
             import rman_utils.rman_assets.core as rac
             import rman_utils.rman_assets.ui as rui
             import rman_utils.rman_assets.lib as ral
@@ -529,7 +525,7 @@ class RenderManForSP(object):
 
                     # clean-up intermediate files
                     for mat in tset_list:
-                        for chan, fpath_list in chans.items():
+                        for _chan, fpath_list in chans.items():
                             for fpath in fpath_list:
                                 if not os.path.exists(fpath):
                                     LOG.warning('cleanup: file not found: %s', fpath)
