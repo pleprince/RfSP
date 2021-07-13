@@ -765,6 +765,7 @@ def add_texture_node(asset, node_name, ntype, filepath):
     asset.addNode(node_name, ntype, 'pattern', ntype)
     pdict = {'type': 'string', 'value': filepath.basename()}
     asset.addParam(node_name, 'filename', pdict)
+    asset.addDependency(pdict['value'])
 
 
 def chan_type_str(channel_type):
