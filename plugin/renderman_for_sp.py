@@ -734,7 +734,7 @@ def env_check(prefs):
         rmantree = pick_rmantree()
         prefs.set('RMANTREE', rmantree)
     # check the version
-    rps_version = re.search(r'RenderManProServer-([\d]+)', rmantree).group(1)
+    rps_version = re.search(r'RenderManProServer-([\d\.]+)', rmantree).group(1)
     if rps_version < MIN_RPS:
         ret = msg_box(
             'RenderMan version too old !',
