@@ -37,7 +37,7 @@ import sys
 import traceback
 import inspect
 import json
-# import logging
+import platform
 import tempfile
 import getpass
 import re
@@ -747,7 +747,10 @@ def env_check(prefs):
 
     LOG.info('RMANTREE = %r', rmantree)
     os.environ['RMANTREE'] = rmantree
-    rmp_path = os.path.join(rmantree, 'lib', 'python3.7', 'site-packages')
+    if platform.system() == 'Windows':
+        rmp_path = os.path.join(rmantree, 'lib', 'python3.7', 'Lib', 'site-packages')
+    else:
+        rmp_path = os.path.join(rmantree, 'lib', 'python3.7', 'site-packages')
     if rmp_path not in sys.path:
         sys.path.append(rmp_path)
     rmu_path = os.path.join(rmantree, 'bin')
