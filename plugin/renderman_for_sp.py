@@ -190,7 +190,6 @@ class RenderManForSP(object):
             import rman_utils.rman_assets.core as rac
             import rman_utils.rman_assets.ui as rui
             import rman_utils.rman_assets.lib as ral
-            # from rman_utils.rman_assets.common.ui_utils import createHLayout
             from rman_utils.filepath import FilePath
         except BaseException as err:
             LOG.error('Failed to import: %s', err)
