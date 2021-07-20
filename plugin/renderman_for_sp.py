@@ -362,7 +362,7 @@ class RenderManForSP(object):
                         set_params(settings, 'bxdf', bxdf_node, asset)
 
                         # connect surf to root node
-                        #
+                        # TODO: replace outColor with bxdf_out (24.1)
                         asset.addConnection('%s.outColor' % bxdf_node,
                                             '%s.surfaceShader' % root_node)
 
@@ -371,6 +371,8 @@ class RenderManForSP(object):
                         if graph:
                             LOG.debug_info('  + Create graph nodes...')
                             for nname, ndict in graph['nodes'].items():
+                                if not condition_match(ndict, chans):
+                                    continue
                                 lname = label + nname
                                 asset.addNode(lname, ndict['nodetype'],
                                               ndict.get('category', 'pattern'),
@@ -383,6 +385,10 @@ class RenderManForSP(object):
                                         LOG.debug_info(
                                             '       |_ param: %s %s = %s',
                                             pdict['type'], pname, pdict['value'])
+                                if ndict['nodetype'] == 'PxrDisplace':
+                                    asset.addConnection('%s.outColor' % lname,
+                                                        '%s.displacementShader' % root_node)
+
 
                         # create texture nodes
                         LOG.debug_info('  + Create texture nodes...')
@@ -402,8 +408,6 @@ class RenderManForSP(object):
                                                 self.ocio_config, colorspace)
                             if ch_type == 'Normal':
                                 add_texture_node(asset, node_name, 'PxrNormalMap', fpath)
-                            elif ch_type == 'Height':
-                                add_texture_node(asset, node_name, 'PxrBump', fpath)
                             else:
                                 add_texture_node(asset, node_name, 'PxrTexture', fpath)
                             set_params(settings, ch_type, node_name, asset)
@@ -789,6 +793,17 @@ def add_texture_node(asset, node_name, ntype, filepath):
     pdict = {'type': 'string', 'value': filepath.basename()}
     asset.addParam(node_name, 'filename', pdict)
     asset.addDependency(pdict['value'])
+
+
+def condition_match(jdata, chans):
+    """Return True is all conditions match."""
+    if not 'conditions' in jdata:
+        return True
+    match = True
+    for cond, val in jdata['conditions'].items():
+        if cond == 'has_channel':
+            match = match and val in chans
+    return match
 
 
 def chan_type_str(channel_type):

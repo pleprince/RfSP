@@ -38,10 +38,34 @@
                     "ocio": "data"
                 },
                 "Height": {
-                    "param": null,
-                    "type": null,
+                    "param": "graph",
+                    "type": "float",
                     "ocio": "data"
                 }
+            },
+            "graph": {
+                "nodes": {
+                    "_dsp": {
+                        "nodetype": "PxrDisplace",
+                        "category": "displace",
+                        "conditions": {
+                            "has_channel": "Height"
+                        }
+                    }
+                },
+                "connections": [
+                    {
+                        "src": {
+                            "node": "ch:Height",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_dsp",
+                            "param": "dispScalar",
+                            "type": "float"
+                        }
+                    }
+                ]
             },
             "settings": {
                 "BaseColor": {
@@ -89,6 +113,16 @@
                         "type": "float",
                         "value": 1.0
                     }
+                },
+                "Height": {
+                    "colorOffset": {
+                        "type": "color",
+                        "value": [
+                            -0.5,
+                            -0.5,
+                            -0.5
+                        ]
+                    }
                 }
             }
         },
@@ -130,8 +164,8 @@
                     "ocio": "data"
                 },
                 "Height": {
-                    "param": null,
-                    "type": null,
+                    "param": "graph",
+                    "type": "float",
                     "ocio": "data"
                 }
             },
@@ -205,6 +239,13 @@
                                     0
                                 ]
                             }
+                        }
+                    },
+                    "_dsp": {
+                        "nodetype": "PxrDisplace",
+                        "category": "displace",
+                        "conditions": {
+                            "has_channel": "Height"
                         }
                     }
                 },
@@ -318,6 +359,17 @@
                             "param": "bottomRGB",
                             "type": "color"
                         }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Height",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_dsp",
+                            "param": "dispScalar",
+                            "type": "float"
+                        }
                     }
                 ]
             },
@@ -373,6 +425,16 @@
                         "type": "float",
                         "value": 1.0
                     }
+                },
+                "Height": {
+                    "colorOffset": {
+                        "type": "color",
+                        "value": [
+                            -0.5,
+                            -0.5,
+                            -0.5
+                        ]
+                    }
                 }
             }
         },
@@ -414,8 +476,8 @@
                     "ocio": "data"
                 },
                 "Height": {
-                    "param": null,
-                    "type": null,
+                    "param": "graph",
+                    "type": "float",
                     "ocio": "data"
                 }
             },
@@ -469,6 +531,13 @@
                         "nodetype": "PxrMetallicWorkflow",
                         "category": "pattern",
                         "params": {}
+                    },
+                    "_dsp": {
+                        "nodetype": "PxrDisplace",
+                        "category": "displace",
+                        "conditions": {
+                            "has_channel": "Height"
+                        }
                     }
                 },
                 "connections": [
@@ -614,6 +683,17 @@
                             "param": "metallic",
                             "type": "float"
                         }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Height",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_dsp",
+                            "param": "dispScalar",
+                            "type": "float"
+                        }
                     }
                 ]
             },
@@ -626,6 +706,16 @@
                     "adjustAmount": {
                         "type": "float",
                         "value": 1.0
+                    }
+                },
+                "Height": {
+                    "colorOffset": {
+                        "type": "color",
+                        "value": [
+                            -0.5,
+                            -0.5,
+                            -0.5
+                        ]
                     }
                 }
             }
