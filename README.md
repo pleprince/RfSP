@@ -8,8 +8,6 @@ RenderManAsset is the format used by the preset browser that was introduced in [
 
 ![demo](img/rfsp.24.1.gif)
 
-[Full demo video of 0.1.1](https://youtu.be/ZEyT95aPFYk)
-
 ## Features
 
 * Open the RenderMan Asset Browser directly in Substance Painter
