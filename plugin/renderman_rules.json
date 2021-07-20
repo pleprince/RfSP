@@ -171,75 +171,10 @@
             },
             "graph": {
                 "nodes": {
-                    "_specFaceColor": {
-                        "nodetype": "PxrBlend",
+                    "_converter": {
+                        "nodetype": "PxrMetallicWorkflow",
                         "category": "pattern",
-                        "params": {
-                            "operation": {
-                                "type": "int",
-                                "value": 19
-                            },
-                            "topA": {
-                                "type": "float",
-                                "value": 0.0
-                            },
-                            "bottomRGB": {
-                                "type": "color",
-                                "value": [
-                                    0.04,
-                                    0.04,
-                                    0.04
-                                ]
-                            },
-                            "bottomA": {
-                                "type": "float",
-                                "value": 1.0
-                            }
-                        }
-                    },
-                    "_specEdgeColor": {
-                        "nodetype": "PxrBlend",
-                        "category": "pattern",
-                        "params": {
-                            "operation": {
-                                "type": "int",
-                                "value": 19
-                            },
-                            "topA": {
-                                "type": "float",
-                                "value": 0.0
-                            },
-                            "bottomRGB": {
-                                "type": "color",
-                                "value": [
-                                    1,
-                                    1,
-                                    1
-                                ]
-                            },
-                            "bottomA": {
-                                "type": "float",
-                                "value": 1.0
-                            }
-                        }
-                    },
-                    "_diffuseAtten": {
-                        "nodetype": "PxrBlend",
-                        "category": "pattern",
-                        "params": {
-                            "operation": {
-                                "type": "int",
-                                "value": 19
-                            },
-                            "topRGB": {
-                                "type": "color",
-                                "value": [
-                                    0,
-                                    0,
-                                    0
-                                ]
-                            }
-                        }
+                        "params": {}
                     },
                     "_dsp": {
                         "nodetype": "PxrDisplace",
@@ -252,8 +187,8 @@
                 "connections": [
                     {
                         "src": {
-                            "node": "_specFaceColor",
-                            "param": "resultRGB"
+                            "node": "_converter",
+                            "param": "resultSpecularFaceRGB"
                         },
                         "dst": {
                             "node": "PxrSurface",
@@ -263,8 +198,8 @@
                     },
                     {
                         "src": {
-                            "node": "_specEdgeColor",
-                            "param": "resultRGB"
+                            "node": "_converter",
+                            "param": "resultSpecularEdgeRGB"
                         },
                         "dst": {
                             "node": "PxrSurface",
@@ -274,8 +209,8 @@
                     },
                     {
                         "src": {
-                            "node": "_diffuseAtten",
-                            "param": "resultRGB"
+                            "node": "_converter",
+                            "param": "resultDiffuseRGB"
                         },
                         "dst": {
                             "node": "PxrSurface",
@@ -289,30 +224,8 @@
                             "param": "resultRGB"
                         },
                         "dst": {
-                            "node": "_specEdgeColor",
-                            "param": "topRGB",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:BaseColor",
-                            "param": "resultRGB"
-                        },
-                        "dst": {
-                            "node": "_specFaceColor",
-                            "param": "topRGB",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:BaseColor",
-                            "param": "resultRGB"
-                        },
-                        "dst": {
-                            "node": "_diffuseAtten",
-                            "param": "bottomRGB",
+                            "node": "_converter",
+                            "param": "baseColor",
                             "type": "color"
                         }
                     },
@@ -322,42 +235,9 @@
                             "param": "resultR"
                         },
                         "dst": {
-                            "node": "_specEdgeColor",
-                            "param": "topA",
+                            "node": "_converter",
+                            "param": "metallic",
                             "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Metallic",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_specFaceColor",
-                            "param": "topA",
-                            "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Metallic",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_diffuseAtten",
-                            "param": "topA",
-                            "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Specular",
-                            "param": "resultRGB "
-                        },
-                        "dst": {
-                            "node": "_specFaceColor",
-                            "param": "bottomRGB",
-                            "type": "color"
                         }
                     },
                     {
