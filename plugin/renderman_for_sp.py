@@ -506,6 +506,11 @@ class RenderManForSP(object):
                         #
                         asset_list.append(asset_path)
 
+                        # update label to make sure the preview is rendered
+                        # TODO: this should be a list as we can export more than
+                        # one asset.
+                        infodict['label'] = label
+
                     # move assets to the requested location
                     #
                     dst = ral.getAbsCategoryPath(self.cfg, categorypath)
