@@ -556,7 +556,6 @@ class RenderManForSP(object):
 
                 def importAsset(self, *args, **kwargs):
                     LOG.info('Asset import is not supported in Substance Painter !')
-                    pass
 
                 def addUiExportOptions(self, top_layout, mode):
                     if mode == 'material':
