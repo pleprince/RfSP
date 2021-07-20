@@ -187,10 +187,12 @@ class RenderManForSP(object):
         # preset browser
         rman_version_str = env_check(self.prefs)
         try:
+            import rman_utils.rman_assets as ra
             import rman_utils.rman_assets.core as rac
             import rman_utils.rman_assets.ui as rui
             import rman_utils.rman_assets.lib as ral
             from rman_utils.filepath import FilePath
+            import logging
         except BaseException as err:
             LOG.error('Failed to import: %s', err)
             traceback.print_exc(file=sys.stdout)
