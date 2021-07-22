@@ -43,6 +43,9 @@ import getpass
 import re
 import subprocess
 import shutil
+import time
+from functools import partial
+import multiprocessing as mp
 from PySide2.QtCore import (QResource, Qt)
 from PySide2.QtGui import (QIcon)
 from PySide2.QtWidgets import (
@@ -119,6 +122,21 @@ def pick_directory(*args):
     args[0].setText(libpath)
     LOG.info('pick_directory%s', str(args))
 
+
+def txmake(args):
+    """Execute a txmake task parameterized by cmd, in the same environment."""
+    try:
+        cmd, env = args
+        p = subprocess.Popen(cmd,
+                             shell=False,
+                             env=env,
+                             startupinfo=startup_info())
+        p.wait()
+    except BaseException as err:
+        raise RuntimeError('%s: %s' % (err, str(args)))
+    if not os.path.exists(cmd[-1]):
+        raise RuntimeError("File doesn't exist: %s\n%s\n%s" %
+                           (cmd[-1], str(p.stderr.read()), ' '.join(cmd)))
 
 class Prefs(object):
 
@@ -197,7 +215,7 @@ class RenderManForSP(object):
             LOG.error('Failed to import: %s', err)
             traceback.print_exc(file=sys.stdout)
         else:
-            # ra.setLogLevel(logging.DEBUG)
+            ra.setLogLevel(logging.INFO)
 
             class SPrefs(ral.HostPrefs):
                 saved = {
@@ -393,6 +411,8 @@ class RenderManForSP(object):
 
                         # create texture nodes
                         LOG.debug_info('  + Create texture nodes...')
+                        txmk_cmds = []  # txamke invocations
+                        tex_funcs = []  # calls to add textures to the asset
                         chan_nodes = {}
                         for ch_type in chans:
                             fpath_list = self.spx_exported_files[mat.name()].get(ch_type, None)
@@ -405,23 +425,38 @@ class RenderManForSP(object):
                             LOG.debug_info('    |_ %s', node_name)
                             chan_nodes[ch_type] = node_name
                             colorspace = mappings[ch_type]['ocio']
-                            fpath = self.txmake(is_udim, asset_path, fpath_list,
-                                                self.ocio_config, colorspace)
+                            # prep all txmake tasks
+                            fpath, cmds = self.txmake_prep(
+                                is_udim, asset_path, fpath_list, self.ocio_config,
+                                colorspace)
+                            txmk_cmds += cmds
+                            # prep asset updates that need to be done once the
+                            # textures are available
                             if ch_type == 'Normal':
-                                add_texture_node(asset, node_name, 'PxrNormalMap', fpath)
+                                tex_funcs.append(
+                                    partial(add_texture_node, asset, node_name,
+                                            'PxrNormalMap', fpath))
                             else:
-                                add_texture_node(asset, node_name, 'PxrTexture', fpath)
-                            set_params(settings, ch_type, node_name, asset)
+                                tex_funcs.append(
+                                    partial(add_texture_node, asset, node_name,
+                                            'PxrTexture', fpath))
+                            tex_funcs.append(partial(set_params, settings, ch_type, node_name, asset))
 
-                        # print_dict(chan_nodes, msg='chan_nodes:\n')
+                        # parallel txmaking
+                        self.parallel_txmake(txmk_cmds)
+
+                        # update asset with new textures
+                        for func in tex_funcs:
+                            func()
 
                         # make direct connections
                         #
                         LOG.debug_info('  + Direct connections...')
                         for ch_type in chans:
-                            if not ch_type in mappings:
+                            if not ch_type in mappings or not ch_type in chan_nodes:
                                 LOG.debug_warning('    |_ skipped %r', ch_type)
                                 continue
+                            LOG.debug_info('    |_ connect start: %s' % ch_type)
                             src = None
                             dst_type = mappings[ch_type]['type']
                             dst_param = mappings[ch_type]['param']
@@ -663,9 +698,10 @@ class RenderManForSP(object):
                                 self.spx_exported_files[ts_name].get(ch, [])
                     return result
 
-                def txmake(self, is_udim, asset_path, fpath_list, ocio_config,
-                           ocio_colorspace):
-
+                def txmake_prep(self, is_udim, asset_path, fpath_list, ocio_config,
+                                ocio_colorspace):
+                    """Return the txmake invocations and the file path for the
+                    asset."""
                     rmantree = FilePath(os.environ['RMANTREE'])
                     binary = rmantree.join('bin', app('txmake')).os_path()
                     cmd = [binary]
@@ -686,32 +722,43 @@ class RenderManForSP(object):
                                 '-ocioconvert', ocio_colorspace, 'rendering']
                     cmd += ['src', 'dst']
                     LOG.debug_info('       |_ cmd = %r', ' '.join(cmd))
+                    cmds = []
                     for img in fpath_list:
                         img = FilePath(img)
-                        self.spx_progress.setLabelText(
-                            '  Converting %s...  ' % img.basename())
-                        QApplication.processEvents()
                         cmd[-2] = img.os_path()
                         filename = img.basename()
                         texfile = os.path.splitext(filename)[0] + '.tex'
                         cmd[-1] = asset_path.join(texfile).os_path()
-                        LOG.debug_info('       |_ txmake : %s -> %s',
-                                       cmd[-2], cmd[-1])
-                        p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                             stderr=subprocess.PIPE,
-                                             startupinfo=startup_info())
-                        p.wait()
-                        # update progress dialog
-                        self.spx_progress.setValue(self.spx_progress.value() + 1)
-                        QApplication.processEvents()
+                        cmds.append(list(cmd))
                     # return a local path to the tex file.
                     filename = FilePath(fpath_list[0]).basename()
                     fname, _ = os.path.splitext(filename)
                     asset_file_ref = FilePath(asset_path).join(fname + '.tex')
                     if is_udim:
                         asset_file_ref = re.sub(r'1\d{3}', '<UDIM>', asset_file_ref)
-                    return FilePath(asset_file_ref)
+                    return FilePath(asset_file_ref), cmds
 
+                def parallel_txmake(self, txmk_cmds):
+                    """Run all txmake invocations for the current asset, using
+                    a pool of worker threads."""
+                    errors = []
+                    nthreads = mp.cpu_count() // 2
+                    ts = time.time()
+
+                    p = mp.Pool(nthreads)
+                    for i, _ in enumerate(
+                            p.imap(txmake, [(c, dict(os.environ)) for c in txmk_cmds])):
+                        self.spx_progress.setValue(i)
+                        QApplication.processEvents()
+
+                    te = time.time()
+                    LOG.info('txmake: created %d textures in %0.4f sec (%s workers)',
+                             len(txmk_cmds), (te - ts), nthreads)
+
+                    for err in errors:
+                        LOG.error('  + errors = %s', err)
+
+                # end of SPrefs ------------------------------------------------
 
             root.setWindowFlag(Qt.SubWindow, True)
             try:
