@@ -878,12 +878,14 @@
                     "paddingAlgorithm": "infinite",
                     "filter": {
                         "outputMaps": [
-                            "$textureSet_baseColor",
-                            "$textureSet_metallic",
-                            "$textureSet_roughness",
-                            "$textureSet_normal",
-                            "$textureSet_emission",
-                            "$textureSet_height"
+                            "$textureSet_BaseColor",
+                            "$textureSet_Metallic",
+                            "$textureSet_Roughness",
+                            "$textureSet_Normal",
+                            "$textureSet_Emission",
+                            "$textureSet_Opacity",
+                            "$textureSet_Anisotropylevel",
+                            "$textureSet_Anisotropyangle"
                         ]
                     }
                 }
