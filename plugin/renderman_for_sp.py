@@ -451,7 +451,8 @@ class RenderManForSP(object):
                         # make direct connections
                         #
                         LOG.debug_info('  + Direct connections...')
-                        asset_nodes = asset.nodeList()
+                        asset_nodes = [a.name() for a in asset.nodeList()]
+                        LOG.debug_info('asset_nodes = %s', asset_nodes)
                         for ch_type in chans:
                             if ch_type not in mappings or ch_type not in chan_nodes:
                                 LOG.debug_warning('    |_ skipped %r', ch_type)
@@ -476,8 +477,6 @@ class RenderManForSP(object):
                             if dst_param == 'graph':
                                 continue
                             dst = '%s.%s' % (bxdf_node, dst_param)
-                            if src not in asset_nodes or dst not in asset_nodes:
-                                continue
                             asset.addConnection(src, dst)
                             LOG.debug_info('    |_ connect: %s -> %s' % (src, dst))
                             # also tag the bxdf param as connected
@@ -505,6 +504,9 @@ class RenderManForSP(object):
                                         continue
                                 if not src_node.startswith(label):
                                     src_node = label + src_node
+                                if src_node not in asset_nodes:
+                                    LOG.debug_info('SKIP: %s', src_node)
+                                    continue
                                 src = '%s.%s' % (src_node, con['src']['param'])
 
                                 dst_node = con['dst']['node']
@@ -519,9 +521,10 @@ class RenderManForSP(object):
                                         continue
                                 if not dst_node.startswith(label):
                                     dst_node = label + dst_node
-                                dst = '%s.%s' % (dst_node, con['dst']['param'])
-                                if src not in asset_nodes or dst not in asset_nodes:
+                                if dst_node not in asset_nodes:
+                                    LOG.debug_info('SKIP: %s', dst_node)
                                     continue
+                                dst = '%s.%s' % (dst_node, con['dst']['param'])
                                 asset.addConnection(src, dst)
                                 LOG.debug_info('    |_ connect: %s -> %s', src, dst)
                                 # mark param as a connected
