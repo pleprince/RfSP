@@ -177,6 +177,11 @@
                     "param": "graph",
                     "type": "float",
                     "ocio": "data"
+                },
+                "Scattering": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
                 }
             },
             "graph": {
@@ -197,6 +202,13 @@
                                 "value": -45.0,
                                 "type": "float"
                             }
+                        }
+                    },
+                    "_sss_diff_mask": {
+                        "nodetype": "PxrInvert",
+                        "category": "pattern",
+                        "conditions": {
+                            "has_channel": "Scattering"
                         }
                     },
                     "_dsp": {
@@ -306,6 +318,61 @@
                             "param": "inputRotation",
                             "type": "float"
                         }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Scattering",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "PxrSurface",
+                            "param": "subsurfaceGain",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Scattering",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "_sss_diff_mask",
+                            "param": "inputRGB",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_sss_diff_mask",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "PxrSurface",
+                            "param": "diffuseGain",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "PxrSurface",
+                            "param": "subsurfaceColor",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "PxrSurface",
+                            "param": "subsurfaceDmfpColor",
+                            "type": "color"
+                        }
                     }
                 ]
             },
@@ -314,6 +381,10 @@
                     "specularModelType": {
                         "type": "int",
                         "value": 1
+                    },
+                    "subsurfaceType": {
+                        "type": "int",
+                        "value": 6
                     }
                 },
                 "BaseColor": {
@@ -425,6 +496,11 @@
                     "param": "graph",
                     "type": "float",
                     "ocio": "data"
+                },
+                "Scattering": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
                 }
             },
             "graph": {
@@ -492,6 +568,27 @@
                         "conditions": {
                             "has_channel": "Height"
                         }
+                    },
+                    "_sss": {
+                         "nodetype": "LamaSSS",
+                         "category": "bxdf",
+                         "conditions": {
+                             "has_channel": "Scattering"
+                         },
+                         "params": {
+                             "sssUnitLength": {
+                                 "type": "float",
+                                 "value": 0.1
+                             },
+                             "sssScale": {
+                                 "type": "float",
+                                 "value": 10.0
+                             }
+                         }
+                    },
+                    "_diff_sss_mix": {
+                        "nodetype": "LamaMix",
+                        "category": "bxdf"
                     }
                 },
                 "connections": [
@@ -531,6 +628,28 @@
                     {
                         "src": {
                             "node": "_diffuse",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_diff_sss_mix",
+                            "param": "material1",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_sss",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_diff_sss_mix",
+                            "param": "material2",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_diff_sss_mix",
                             "param": "outColor"
                         },
                         "dst": {
@@ -681,10 +800,61 @@
                             "param": "inputRotation",
                             "type": "float"
                         }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Scattering",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_diff_sss_mix",
+                            "param": "mix",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "_sss",
+                            "param": "color",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "_sss",
+                            "param": "sssRadius",
+                            "type": "color"
+                        }
                     }
                 ]
             },
             "settings": {
+                "bxdf":{
+                    "computeSubsurface": {
+                        "type": "int",
+                        "value": 1
+                    }
+                },
+                "BaseColor": {
+                    "linearize": {
+                        "type": "int",
+                        "value": 1
+                    }
+                },
+                "Emissive": {
+                    "linearize": {
+                        "type": "int",
+                        "value": 1
+                    }
+                },
                 "Normal": {
                     "orientation": {
                         "type": "int",
@@ -863,6 +1033,17 @@
                                 "destChannel": "R",
                                 "srcMapType": "documentMap",
                                 "srcMapName": "anisotropyangle"
+                            }
+                        ]
+                    },
+                    {
+                        "fileName": "$textureSet_Scattering(.$udim)",
+                        "channels": [
+                            {
+                                "srcChannel": "R",
+                                "destChannel": "R",
+                                "srcMapType": "documentMap",
+                                "srcMapName": "scattering"
                             }
                         ]
                     }
