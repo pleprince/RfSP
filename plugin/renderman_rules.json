@@ -167,6 +167,16 @@
                     "param": "graph",
                     "type": "float",
                     "ocio": "data"
+                },
+                "Anisotropylevel": {
+                    "param": "specularAnisotropy",
+                    "type": "float",
+                    "ocio": "data"
+                },
+                "Anisotropyangle": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
                 }
             },
             "graph": {
@@ -175,6 +185,19 @@
                         "nodetype": "PxrMetallicWorkflow",
                         "category": "pattern",
                         "params": {}
+                    },
+                    "_anisoangle": {
+                        "nodetype": "PxrTangentField",
+                        "category": "pattern",
+                        "conditions": {
+                            "has_channel": "Anisotropyangle"
+                        },
+                        "params": {
+                            "rotationOffset": {
+                                "value": -45.0,
+                                "type": "float"
+                            }
+                        }
                     },
                     "_dsp": {
                         "nodetype": "PxrDisplace",
@@ -248,6 +271,39 @@
                         "dst": {
                             "node": "_dsp",
                             "param": "dispScalar",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Anisotropylevel",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "ch:Roughness",
+                            "param": "colorOffset",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_anisoangle",
+                            "param": "resultXYZ"
+                        },
+                        "dst": {
+                            "node": "PxrSurface",
+                            "param": "specularAnisotropyDirection",
+                            "type": "vector"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Anisotropyangle",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_anisoangle",
+                            "param": "inputRotation",
                             "type": "float"
                         }
                     }
@@ -359,6 +415,16 @@
                     "param": "graph",
                     "type": "float",
                     "ocio": "data"
+                },
+                "Anisotropylevel": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
+                },
+                "Anisotropyangle": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
                 }
             },
             "graph": {
@@ -410,6 +476,14 @@
                     "_converter": {
                         "nodetype": "PxrMetallicWorkflow",
                         "category": "pattern",
+                        "params": {}
+                    },
+                    "_anisoangle": {
+                        "nodetype": "PxrTangentField",
+                        "category": "pattern",
+                        "conditions": {
+                            "has_channel": "Anisotropyangle"
+                        },
                         "params": {}
                     },
                     "_dsp": {
@@ -574,6 +648,39 @@
                             "param": "dispScalar",
                             "type": "float"
                         }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Anisotropylevel",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "anisotropy",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_anisoangle",
+                            "param": "resultXYZ"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "anisotropyDirection",
+                            "type": "vector"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Anisotropyangle",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_anisoangle",
+                            "param": "inputRotation",
+                            "type": "float"
+                        }
                     }
                 ]
             },
@@ -734,6 +841,28 @@
                                 "destChannel": "R",
                                 "srcMapType": "documentMap",
                                 "srcMapName": "opacity"
+                            }
+                        ]
+                    },
+                    {
+                        "fileName": "$textureSet_Anisotropylevel(.$udim)",
+                        "channels": [
+                            {
+                                "srcChannel": "R",
+                                "destChannel": "R",
+                                "srcMapType": "documentMap",
+                                "srcMapName": "anisotropylevel"
+                            }
+                        ]
+                    },
+                    {
+                        "fileName": "$textureSet_Anisotropyangle(.$udim)",
+                        "channels": [
+                            {
+                                "srcChannel": "R",
+                                "destChannel": "R",
+                                "srcMapType": "documentMap",
+                                "srcMapName": "anisotropyangle"
                             }
                         ]
                     }
