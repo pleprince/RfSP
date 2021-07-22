@@ -337,7 +337,6 @@ class RenderManForSP(object):
                         if not is_udim:
                             label = '%s_%s' % (scene, mat.name())
 
-                        # chans = mat.get_stack().all_channels()
                         chans = self.textureset_channels(mat)
                         LOG.debug_info('+ Exporting %s', label)
 
@@ -452,8 +451,9 @@ class RenderManForSP(object):
                         # make direct connections
                         #
                         LOG.debug_info('  + Direct connections...')
+                        asset_nodes = asset.nodeList()
                         for ch_type in chans:
-                            if not ch_type in mappings or not ch_type in chan_nodes:
+                            if ch_type not in mappings or ch_type not in chan_nodes:
                                 LOG.debug_warning('    |_ skipped %r', ch_type)
                                 continue
                             LOG.debug_info('    |_ connect start: %s' % ch_type)
@@ -476,6 +476,8 @@ class RenderManForSP(object):
                             if dst_param == 'graph':
                                 continue
                             dst = '%s.%s' % (bxdf_node, dst_param)
+                            if src not in asset_nodes or dst not in asset_nodes:
+                                continue
                             asset.addConnection(src, dst)
                             LOG.debug_info('    |_ connect: %s -> %s' % (src, dst))
                             # also tag the bxdf param as connected
@@ -518,6 +520,8 @@ class RenderManForSP(object):
                                 if not dst_node.startswith(label):
                                     dst_node = label + dst_node
                                 dst = '%s.%s' % (dst_node, con['dst']['param'])
+                                if src not in asset_nodes or dst not in asset_nodes:
+                                    continue
                                 asset.addConnection(src, dst)
                                 LOG.debug_info('    |_ connect: %s -> %s', src, dst)
                                 # mark param as a connected
@@ -688,6 +692,7 @@ class RenderManForSP(object):
                                 self.spx_num_textures += 1
 
                 def textureset_channels(self, spts_textureset):
+                    """Return a dict of channel_type : list of textures."""
                     result = {}
                     ts_name = spts_textureset.name()
                     chans = spts_textureset.get_stack().all_channels()
