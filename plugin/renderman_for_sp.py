@@ -28,7 +28,6 @@ Export substance painter maps to a RenderMan Asset package.
 
 # TODO: make sure the normals are in directX format
 # TODO: remove non-exportable channels for def.
-# TODO: add anisotropy
 # TODO: name textures with color spaces
 # pylint: disable=missing-docstring,invalid-name,import-error
 
@@ -54,6 +53,7 @@ from PySide2.QtWidgets import (
     QFileDialog,
     QFormLayout,
     QComboBox,
+    QGroupBox,
     QProgressDialog,
     QApplication
     )
@@ -265,12 +265,10 @@ class RenderManForSP(object):
                     prefs = self.prefsobj.get('host_prefs', {})
                     prefs[pref_name] = value
                     self.prefsobj.set('host_prefs', prefs)
-                    # self._print()
 
                 def saveAllPrefs(self):
                     for k in self.saved:
                         self.setHostPref(k, getattr(self, k))
-                    # self._print()
 
                 def preExportCheck(self, mode, hdr=None):
                     LOG.debug_info('preExportCheck: %r, hdr=%r', mode, hdr)
@@ -291,10 +289,12 @@ class RenderManForSP(object):
                     LOG.debug_info(
                         'exportMaterial: %r, %r, %r', categorypath, infodict,
                         previewtype)
-                    #
+                    # get specific Substance painter options
+                    # exported bxdf
                     _bxdf = self.opt_bxdf.currentText()
                     self.prefsobj.set('last bxdf', _bxdf)
                     LOG.debug_info('chosen bxdf: %s', _bxdf)
+                    # chosen ocio color config
                     _ocio = self.opt_ocio.currentText()
                     self.ocio_config['config'] = _ocio
                     if _ocio == '$OCIO':
@@ -602,38 +602,35 @@ class RenderManForSP(object):
                     LOG.info('Asset import is not supported in Substance Painter !')
 
                 def addUiExportOptions(self, top_layout, mode):
-                    if mode == 'material':
-                        lyt = QFormLayout()
-                        lyt.FieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
-                        lyt.setContentsMargins(5, 5, 5, 5)
-                        lyt.setSpacing(5)
-                        lyt.setLabelAlignment(Qt.AlignRight)
-                        # BXDF
-                        self.opt_bxdf = QComboBox()
-                        self.opt_bxdf.addItems(list(self.rules['models'].keys()))
-                        lyt.addRow('BxDF :', self.opt_bxdf)
-                        # color space
-                        self.opt_ocio = QComboBox()
-                        self.opt_ocio.addItems(['Off', 'ACES-1.2',
-                                                'filmic-blender', '$OCIO'])
-                        lyt.addRow('Color configuration :', self.opt_ocio)
-                        # add to parent layout
-                        top_layout.addLayout(lyt)
-                        # set last used bxdf and ocio config
-                        last_bxdf = self.prefsobj.get('last bxdf', None)
-                        if last_bxdf:
-                            self.opt_bxdf.setCurrentText(last_bxdf)
-                        ocio_config = self.prefsobj.get('ocio config', None)
-                        if ocio_config:
-                            self.opt_ocio.setCurrentText(ocio_config)
-
-                def _print(self):
-                    prefs = self.prefsobj.get('host_prefs', {})
-                    loaded = ['\t%s: %s\n' % (k, prefs[k]) for k in prefs]
-                    state = ['\t%s: %s\n' % (k, getattr(self, k)) for k in self.saved]
-                    LOG.debug_info(
-                        '%r ------------------------\nLOADED:\n%s\nSTATE:\n%s', self,
-                        ''.join(loaded), ''.join(state))
+                    if mode != 'material':
+                        return
+                    grp = QGroupBox()
+                    grp.setCheckable(False)
+                    grp.setTitle('Substance Painter Options:')
+                    lyt = QFormLayout()
+                    grp.setLayout(lyt)
+                    lyt.FieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+                    lyt.setContentsMargins(5, 5, 5, 5)
+                    lyt.setSpacing(5)
+                    lyt.setLabelAlignment(Qt.AlignRight)
+                    # BXDF
+                    self.opt_bxdf = QComboBox()
+                    self.opt_bxdf.addItems(list(self.rules['models'].keys()))
+                    lyt.addRow('BxDF :', self.opt_bxdf)
+                    # color space
+                    self.opt_ocio = QComboBox()
+                    self.opt_ocio.addItems(['Off', 'ACES-1.2',
+                                            'filmic-blender', '$OCIO'])
+                    lyt.addRow('Color configuration :', self.opt_ocio)
+                    # add to parent layout
+                    top_layout.addWidget(grp)
+                    # set last used bxdf, ocio config and bump roughness
+                    last_bxdf = self.prefsobj.get('last bxdf', None)
+                    if last_bxdf:
+                        self.opt_bxdf.setCurrentText(last_bxdf)
+                    ocio_config = self.prefsobj.get('ocio config', None)
+                    if ocio_config:
+                        self.opt_ocio.setCurrentText(ocio_config)
 
                 def _load_rules(self):
                     fpath = FilePath(root_dir()).join('renderman_rules.json')
