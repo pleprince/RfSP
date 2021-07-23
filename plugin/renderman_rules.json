@@ -1,6 +1,7 @@
 {
     "models": {
-        "PxrDisney": {
+        "Disney": {
+            "bxdf": "PxrDisney",
             "mapping": {
                 "BaseColor": {
                     "param": "baseColor",
@@ -127,6 +128,7 @@
             }
         },
         "PxrSurface": {
+            "bxdf": "PxrSurface",
             "mapping": {
                 "BaseColor": {
                     "param": "graph",
@@ -445,7 +447,8 @@
                 }
             }
         },
-        "LamaSurface": {
+        "Lama": {
+            "bxdf": "LamaSurface",
             "mapping": {
                 "BaseColor": {
                     "param": "graph",

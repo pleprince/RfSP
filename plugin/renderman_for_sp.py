@@ -291,9 +291,9 @@ class RenderManForSP(object):
                         previewtype)
                     # get specific Substance painter options
                     # exported bxdf
-                    _bxdf = self.opt_bxdf.currentText()
-                    self.prefsobj.set('last bxdf', _bxdf)
-                    LOG.debug_info('chosen bxdf: %s', _bxdf)
+                    _preset = self.opt_bxdf.currentText()
+                    self.prefsobj.set('last bxdf', _preset)
+                    LOG.debug_info('chosen bxdf: %s', _preset)
                     # chosen ocio color config
                     _ocio = self.opt_ocio.currentText()
                     self.ocio_config['config'] = _ocio
@@ -305,7 +305,8 @@ class RenderManForSP(object):
                     self.prefsobj.set('ocio config', _ocio)
                     LOG.debug_info('chosen ocio config: %s', _ocio)
                     # setup data
-                    bxdf_rules = self.rules['models'][_bxdf]
+                    bxdf_rules = self.rules['models'][_preset]
+                    _bxdf = bxdf_rules['bxdf']
                     mappings = bxdf_rules['mapping']
                     graph = bxdf_rules.get('graph', None)
                     settings = bxdf_rules.get('settings', None)
@@ -380,7 +381,6 @@ class RenderManForSP(object):
                         set_params(settings, 'bxdf', bxdf_node, asset)
 
                         # connect surf to root node
-                        # TODO: replace outColor with bxdf_out (24.1)
                         asset.addConnection('%s.outColor' % bxdf_node,
                                             '%s.surfaceShader' % root_node)
 
