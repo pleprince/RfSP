@@ -1,40 +1,40 @@
 {
     "models": {
-        "Disney": {
-            "bxdf": "PxrDisney",
+        "Lama": {
+            "bxdf": "LamaSurface",
             "mapping": {
                 "BaseColor": {
-                    "param": "baseColor",
+                    "param": "graph",
                     "type": "color",
                     "ocio": "srgb_texture"
                 },
                 "Specular": {
-                    "param": "specular",
-                    "type": "float",
+                    "param": "graph",
+                    "type": "color",
                     "ocio": "srgb_texture"
                 },
                 "Roughness": {
-                    "param": "roughness",
+                    "param": "graph",
                     "type": "float",
                     "ocio": "data"
                 },
                 "Metallic": {
-                    "param": "metallic",
+                    "param": "graph",
                     "type": "float",
                     "ocio": "data"
                 },
                 "Opacity": {
-                    "param": null,
-                    "type": null,
+                    "param": "presence",
+                    "type": "float",
                     "ocio": "data"
                 },
                 "Emissive": {
-                    "param": "emitColor",
+                    "param": "graph",
                     "type": "color",
                     "ocio": "srgb_texture"
                 },
                 "Normal": {
-                    "param": "bumpNormal",
+                    "param": "graph",
                     "type": "normal",
                     "ocio": "data"
                 },
@@ -42,19 +42,277 @@
                     "param": "graph",
                     "type": "float",
                     "ocio": "data"
+                },
+                "Anisotropylevel": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
+                },
+                "Anisotropyangle": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
+                },
+                "Scattering": {
+                    "param": "graph",
+                    "type": "float",
+                    "ocio": "data"
                 }
             },
             "graph": {
                 "nodes": {
+                    "_clearcoatLayer": {
+                        "nodetype": "LamaLayer",
+                        "category": "bxdf",
+                        "params": {
+                            "topMix": {
+                                "type": "float",
+                                "value": 0.0
+                            }
+                        }
+                    },
+                    "_clearcoat": {
+                        "nodetype": "LamaDielectric",
+                        "category": "bxdf",
+                        "params": {}
+                    },
+                    "_diffSpec": {
+                        "nodetype": "LamaAdd",
+                        "category": "bxdf",
+                        "params": {
+                            "weight1": {
+                                "type": "float",
+                                "value": 1.0
+                            },
+                            "weight2": {
+                                "type": "float",
+                                "value": 1.0
+                            }
+                        }
+                    },
+                    "_diffuse": {
+                        "nodetype": "LamaDiffuse",
+                        "category": "bxdf",
+                        "params": {}
+                    },
+                    "_specular": {
+                        "nodetype": "LamaConductor",
+                        "category": "bxdf",
+                        "params": {
+                            "fresnelMode": {
+                                "type": "int",
+                                "value": 0
+                            }
+                        }
+                    },
+                    "_converter": {
+                        "nodetype": "PxrMetallicWorkflow",
+                        "category": "pattern",
+                        "params": {}
+                    },
+                    "_anisoangle": {
+                        "nodetype": "PxrTangentField",
+                        "category": "pattern",
+                        "conditions": {
+                            "has_channel": "Anisotropyangle"
+                        },
+                        "params": {}
+                    },
                     "_dsp": {
                         "nodetype": "PxrDisplace",
                         "category": "displace",
                         "conditions": {
                             "has_channel": "Height"
                         }
+                    },
+                    "_sss": {
+                        "nodetype": "LamaSSS",
+                        "category": "bxdf",
+                        "conditions": {
+                            "has_channel": "Scattering"
+                        },
+                        "params": {
+                            "sssUnitLength": {
+                                "type": "float",
+                                "value": 0.1
+                            },
+                            "sssScale": {
+                                "type": "float",
+                                "value": 10.0
+                            }
+                        }
+                    },
+                    "_diff_sss_mix": {
+                        "nodetype": "LamaMix",
+                        "category": "bxdf"
                     }
                 },
                 "connections": [
+                    {
+                        "src": {
+                            "node": "_clearcoatLayer",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "LamaSurface",
+                            "param": "materialFront",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_clearcoat",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_clearcoatLayer",
+                            "param": "materialTop",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_diffSpec",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_clearcoatLayer",
+                            "param": "materialBase",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_diffuse",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_diff_sss_mix",
+                            "param": "material1",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_sss",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_diff_sss_mix",
+                            "param": "material2",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_diff_sss_mix",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_diffSpec",
+                            "param": "material1",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_specular",
+                            "param": "outColor"
+                        },
+                        "dst": {
+                            "node": "_diffSpec",
+                            "param": "material2",
+                            "type": "bxdf"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Normal",
+                            "param": "resultN"
+                        },
+                        "dst": {
+                            "node": "_diffuse",
+                            "param": "normal",
+                            "type": "normal"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Normal",
+                            "param": "resultN"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "normal",
+                            "type": "normal"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_converter",
+                            "param": "resultDiffuseRGB"
+                        },
+                        "dst": {
+                            "node": "_diffuse",
+                            "param": "color",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_converter",
+                            "param": "resultSpecularEdgeRGB"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "edgeColor",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_converter",
+                            "param": "resultSpecularFaceRGB"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "reflectivity",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Roughness",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "roughness",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "_converter",
+                            "param": "baseColor",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Metallic",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_converter",
+                            "param": "metallic",
+                            "type": "float"
+                        }
+                    },
                     {
                         "src": {
                             "node": "ch:Height",
@@ -65,38 +323,86 @@
                             "param": "dispScalar",
                             "type": "float"
                         }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Anisotropylevel",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "anisotropy",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "_anisoangle",
+                            "param": "resultXYZ"
+                        },
+                        "dst": {
+                            "node": "_specular",
+                            "param": "anisotropyDirection",
+                            "type": "vector"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Anisotropyangle",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_anisoangle",
+                            "param": "inputRotation",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:Scattering",
+                            "param": "resultR"
+                        },
+                        "dst": {
+                            "node": "_diff_sss_mix",
+                            "param": "mix",
+                            "type": "float"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "_sss",
+                            "param": "color",
+                            "type": "color"
+                        }
+                    },
+                    {
+                        "src": {
+                            "node": "ch:BaseColor",
+                            "param": "resultRGB"
+                        },
+                        "dst": {
+                            "node": "_sss",
+                            "param": "sssRadius",
+                            "type": "color"
+                        }
                     }
                 ]
             },
             "settings": {
+                "bxdf": {
+                    "computeSubsurface": {
+                        "type": "int",
+                        "value": 1
+                    }
+                },
                 "BaseColor": {
                     "linearize": {
                         "type": "int",
                         "value": 1
-                    }
-                },
-                "Specular": {
-                    "linearize": {
-                        "type": "int",
-                        "value": 1
-                    }
-                },
-                "Roughness": {
-                    "linearize": {
-                        "type": "int",
-                        "value": 0
-                    }
-                },
-                "Metallic": {
-                    "linearize": {
-                        "type": "int",
-                        "value": 0
-                    }
-                },
-                "Opacity": {
-                    "linearize": {
-                        "type": "int",
-                        "value": 0
                     }
                 },
                 "Emissive": {
@@ -447,41 +753,41 @@
                 }
             }
         },
-        "Lama": {
-            "bxdf": "LamaSurface",
+        "Disney": {
+            "bxdf": "PxrDisney",
             "mapping": {
                 "BaseColor": {
-                    "param": "graph",
+                    "param": "baseColor",
                     "type": "color",
                     "ocio": "srgb_texture"
                 },
                 "Specular": {
-                    "param": "graph",
-                    "type": "color",
+                    "param": "specular",
+                    "type": "float",
                     "ocio": "srgb_texture"
                 },
                 "Roughness": {
-                    "param": "graph",
+                    "param": "roughness",
                     "type": "float",
                     "ocio": "data"
                 },
                 "Metallic": {
-                    "param": "graph",
+                    "param": "metallic",
                     "type": "float",
                     "ocio": "data"
                 },
                 "Opacity": {
-                    "param": "presence",
-                    "type": "float",
+                    "param": null,
+                    "type": null,
                     "ocio": "data"
                 },
                 "Emissive": {
-                    "param": "graph",
+                    "param": "emitColor",
                     "type": "color",
                     "ocio": "srgb_texture"
                 },
                 "Normal": {
-                    "param": "graph",
+                    "param": "bumpNormal",
                     "type": "normal",
                     "ocio": "data"
                 },
@@ -489,277 +795,19 @@
                     "param": "graph",
                     "type": "float",
                     "ocio": "data"
-                },
-                "Anisotropylevel": {
-                    "param": "graph",
-                    "type": "float",
-                    "ocio": "data"
-                },
-                "Anisotropyangle": {
-                    "param": "graph",
-                    "type": "float",
-                    "ocio": "data"
-                },
-                "Scattering": {
-                    "param": "graph",
-                    "type": "float",
-                    "ocio": "data"
                 }
             },
             "graph": {
                 "nodes": {
-                    "_clearcoatLayer": {
-                        "nodetype": "LamaLayer",
-                        "category": "bxdf",
-                        "params": {
-                            "topMix": {
-                                "type": "float",
-                                "value": 0.0
-                            }
-                        }
-                    },
-                    "_clearcoat": {
-                        "nodetype": "LamaDielectric",
-                        "category": "bxdf",
-                        "params": {}
-                    },
-                    "_diffSpec": {
-                        "nodetype": "LamaAdd",
-                        "category": "bxdf",
-                        "params": {
-                            "weight1": {
-                                "type": "float",
-                                "value": 1.0
-                            },
-                            "weight2": {
-                                "type": "float",
-                                "value": 1.0
-                            }
-                        }
-                    },
-                    "_diffuse": {
-                        "nodetype": "LamaDiffuse",
-                        "category": "bxdf",
-                        "params": {}
-                    },
-                    "_specular": {
-                        "nodetype": "LamaConductor",
-                        "category": "bxdf",
-                        "params": {
-                            "fresnelMode": {
-                                "type": "int",
-                                "value": 0
-                            }
-                        }
-                    },
-                    "_converter": {
-                        "nodetype": "PxrMetallicWorkflow",
-                        "category": "pattern",
-                        "params": {}
-                    },
-                    "_anisoangle": {
-                        "nodetype": "PxrTangentField",
-                        "category": "pattern",
-                        "conditions": {
-                            "has_channel": "Anisotropyangle"
-                        },
-                        "params": {}
-                    },
                     "_dsp": {
                         "nodetype": "PxrDisplace",
                         "category": "displace",
                         "conditions": {
                             "has_channel": "Height"
                         }
-                    },
-                    "_sss": {
-                         "nodetype": "LamaSSS",
-                         "category": "bxdf",
-                         "conditions": {
-                             "has_channel": "Scattering"
-                         },
-                         "params": {
-                             "sssUnitLength": {
-                                 "type": "float",
-                                 "value": 0.1
-                             },
-                             "sssScale": {
-                                 "type": "float",
-                                 "value": 10.0
-                             }
-                         }
-                    },
-                    "_diff_sss_mix": {
-                        "nodetype": "LamaMix",
-                        "category": "bxdf"
                     }
                 },
                 "connections": [
-                    {
-                        "src": {
-                            "node": "_clearcoatLayer",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "LamaSurface",
-                            "param": "materialFront",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_clearcoat",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "_clearcoatLayer",
-                            "param": "materialTop",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_diffSpec",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "_clearcoatLayer",
-                            "param": "materialBase",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_diffuse",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "_diff_sss_mix",
-                            "param": "material1",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_sss",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "_diff_sss_mix",
-                            "param": "material2",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_diff_sss_mix",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "_diffSpec",
-                            "param": "material1",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_specular",
-                            "param": "outColor"
-                        },
-                        "dst": {
-                            "node": "_diffSpec",
-                            "param": "material2",
-                            "type": "bxdf"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Normal",
-                            "param": "resultN"
-                        },
-                        "dst": {
-                            "node": "_diffuse",
-                            "param": "normal",
-                            "type": "normal"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Normal",
-                            "param": "resultN"
-                        },
-                        "dst": {
-                            "node": "_specular",
-                            "param": "normal",
-                            "type": "normal"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_converter",
-                            "param": "resultDiffuseRGB"
-                        },
-                        "dst": {
-                            "node": "_diffuse",
-                            "param": "color",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_converter",
-                            "param": "resultSpecularEdgeRGB"
-                        },
-                        "dst": {
-                            "node": "_specular",
-                            "param": "edgeColor",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_converter",
-                            "param": "resultSpecularFaceRGB"
-                        },
-                        "dst": {
-                            "node": "_specular",
-                            "param": "reflectivity",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Roughness",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_specular",
-                            "param": "roughness",
-                            "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:BaseColor",
-                            "param": "resultRGB"
-                        },
-                        "dst": {
-                            "node": "_converter",
-                            "param": "baseColor",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Metallic",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_converter",
-                            "param": "metallic",
-                            "type": "float"
-                        }
-                    },
                     {
                         "src": {
                             "node": "ch:Height",
@@ -770,86 +818,38 @@
                             "param": "dispScalar",
                             "type": "float"
                         }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Anisotropylevel",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_specular",
-                            "param": "anisotropy",
-                            "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "_anisoangle",
-                            "param": "resultXYZ"
-                        },
-                        "dst": {
-                            "node": "_specular",
-                            "param": "anisotropyDirection",
-                            "type": "vector"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Anisotropyangle",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_anisoangle",
-                            "param": "inputRotation",
-                            "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:Scattering",
-                            "param": "resultR"
-                        },
-                        "dst": {
-                            "node": "_diff_sss_mix",
-                            "param": "mix",
-                            "type": "float"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:BaseColor",
-                            "param": "resultRGB"
-                        },
-                        "dst": {
-                            "node": "_sss",
-                            "param": "color",
-                            "type": "color"
-                        }
-                    },
-                    {
-                        "src": {
-                            "node": "ch:BaseColor",
-                            "param": "resultRGB"
-                        },
-                        "dst": {
-                            "node": "_sss",
-                            "param": "sssRadius",
-                            "type": "color"
-                        }
                     }
                 ]
             },
             "settings": {
-                "bxdf":{
-                    "computeSubsurface": {
-                        "type": "int",
-                        "value": 1
-                    }
-                },
                 "BaseColor": {
                     "linearize": {
                         "type": "int",
                         "value": 1
+                    }
+                },
+                "Specular": {
+                    "linearize": {
+                        "type": "int",
+                        "value": 1
+                    }
+                },
+                "Roughness": {
+                    "linearize": {
+                        "type": "int",
+                        "value": 0
+                    }
+                },
+                "Metallic": {
+                    "linearize": {
+                        "type": "int",
+                        "value": 0
+                    }
+                },
+                "Opacity": {
+                    "linearize": {
+                        "type": "int",
+                        "value": 0
                     }
                 },
                 "Emissive": {
