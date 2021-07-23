@@ -12,6 +12,16 @@ RenderManAsset is the format used by the preset browser that was introduced in [
 
 * Open the RenderMan Asset Browser directly in Substance Painter
 * Export SP project to LamaSurface, PrxSurface or PxrDisney
+* Support the following channels:
+  * baseColor
+  * metallic
+  * roughness
+  * normal
+  * height
+  * emission
+  * anisotropylevel
+  * anisotropyangle
+  * scattering
 
 ## Requirements
 
@@ -29,7 +39,6 @@ This plugin will NOT work without the following software:
 
 ## Known Issues
 
-* Need to add anisotropy support
 * Converted textures' names do not contain the source and destination colorspace.
 * When a SP project doesn't define one of the expected channels, SP will issue a warning.
 * When multiple assets are created, only the last one gets a preview render.
