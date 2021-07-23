@@ -26,7 +26,6 @@ Export substance painter maps to a RenderMan Asset package.
 #  SOFTWARE.
 # -----------------------------------------------------------------------------
 
-# TODO: make sure the normals are in directX format
 # TODO: remove non-exportable channels for def.
 # TODO: name textures with color spaces
 # pylint: disable=missing-docstring,invalid-name,import-error
