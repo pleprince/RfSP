@@ -40,7 +40,6 @@ This plugin will NOT work without the following software:
 ## Known Issues
 
 * Converted textures' names do not contain the source and destination colorspace.
-* When a SP project doesn't define one of the expected channels, SP will issue a (harmless) warning.
 * When multiple assets are created, only the last one gets a preview render.
 * The icons of the export dialog are clipped.
 * The "import" item of the swatch's contextual menu should be disabled.

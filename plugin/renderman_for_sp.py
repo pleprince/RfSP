@@ -132,6 +132,8 @@ def txmake(args):
         cmd, env = args
         p = subprocess.Popen(cmd,
                              shell=False,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
                              env=env,
                              startupinfo=startup_info())
         p.wait()
@@ -782,11 +784,18 @@ class RenderManForSP(object):
                     nthreads = mp.cpu_count() // 2
                     ts = time.time()
 
-                    p = mp.Pool(nthreads)
-                    for i, _ in enumerate(
-                            p.imap_unordered(txmake, [(c, dict(os.environ)) for c in txmk_cmds])):
-                        self.spx_progress.setValue(i)
-                        QApplication.processEvents()
+                    if os.name == 'nt':
+                        # NO MULTIPROCESSING FOR WINDOWS !!!!!
+                        for i, cmd in enumerate(txmk_cmds):
+                            txmake((cmd, dict(os.environ)))
+                            self.spx_progress.setValue(i)
+                            QApplication.processEvents()
+                    else:
+                        p = mp.Pool(nthreads)
+                        for i, _ in enumerate(
+                                p.imap_unordered(txmake, [(c, dict(os.environ)) for c in txmk_cmds])):
+                            self.spx_progress.setValue(i)
+                            QApplication.processEvents()
 
                     te = time.time()
                     LOG.info('txmake: created %d textures in %0.4f sec (%s workers)',
