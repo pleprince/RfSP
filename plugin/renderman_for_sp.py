@@ -42,6 +42,7 @@ import re
 import subprocess
 import shutil
 import time
+import copy
 from functools import partial
 import multiprocessing as mp
 from PySide2.QtCore import (QResource, Qt)
@@ -307,7 +308,7 @@ class RenderManForSP(object):
                     self.prefsobj.set('ocio config', _ocio)
                     LOG.debug_info('chosen ocio config: %s', _ocio)
                     # setup data
-                    bxdf_rules = self.rules['models'][_preset]
+                    bxdf_rules = copy.deepcopy(self.rules['models'][_preset])
                     _bxdf = bxdf_rules['bxdf']
                     mappings = bxdf_rules['mapping']
                     graph = bxdf_rules.get('graph', None)
@@ -669,14 +670,35 @@ class RenderManForSP(object):
                         rendererVersion=str(self.rman_version))
                     LOG.debug_info('  + compatibility set')
 
-                def sp_export(self, export_path):
-                    tset_names = [s.name() for s in spts.all_texture_sets()]
-                    config = dict(self.rules['export_config'])
+                def _setup_export_rules(self, export_path):
+                    # work on a copy of the original config
+                    config = copy.deepcopy(self.rules['export_config'])
+                    # set export path
                     tex_path = export_path.join('exported')
                     create_directory(tex_path)
                     config['exportPath'] = tex_path.os_path()
-                    config['exportList'] = [{'rootPath': n} for n in tset_names]
-                    # LOG.debug_info(json.dumps(config, indent=2))
+                    # make sure each texture set only exports existing channels.
+                    config['exportList'] = []
+                    # find all requested channels
+                    for tset in spts.all_texture_sets():
+                        channels = set()
+                        tset_settings = {'rootPath': tset.name(),
+                                         'filter': {'outputMaps': []}}
+                        for stack in tset.all_stacks():
+                            for ch in stack.all_channels():
+                                ch_str = chan_type_str(ch)
+                                if ch_str not in channels:
+                                    tset_settings['filter']['outputMaps'].append(
+                                        '$textureSet_%s(.$udim)' % ch_str
+                                    )
+                                channels.add(ch_str)
+                        config['exportList'].append(tset_settings)
+                    return config
+
+                def sp_export(self, export_path):
+                    config = self._setup_export_rules(export_path)
+                    LOG.debug_info(json.dumps(config, indent=2))
+                    # launch export
                     result = spex.export_project_textures(config)
                     if result.status != spex.ExportStatus.Success:
                         LOG.error(result.message)
