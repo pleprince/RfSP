@@ -750,7 +750,7 @@ class RenderManForSP(object):
 
                     p = mp.Pool(nthreads)
                     for i, _ in enumerate(
-                            p.imap(txmake, [(c, dict(os.environ)) for c in txmk_cmds])):
+                            p.imap_unordered(txmake, [(c, dict(os.environ)) for c in txmk_cmds])):
                         self.spx_progress.setValue(i)
                         QApplication.processEvents()
 
