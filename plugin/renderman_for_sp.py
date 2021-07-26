@@ -103,6 +103,9 @@ class Log(object):
 
 
 LOG = Log(loglevel=spl.ERROR)
+# # enable python debugging
+# import ptvsd
+# ptvsd.enable_attach(address=('0.0.0.0', 56788))
 
 
 def root_dir():
