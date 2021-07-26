@@ -291,8 +291,8 @@ class RenderManForSP(object):
                     # get specific Substance painter options
                     # exported bxdf
                     _preset = self.opt_bxdf.currentText()
-                    self.prefsobj.set('last bxdf', _preset)
-                    LOG.debug_info('chosen bxdf: %s', _preset)
+                    self.prefsobj.set('last preset', _preset)
+                    LOG.debug_info('chosen preset: %s', _preset)
                     # chosen ocio color config
                     _ocio = self.opt_ocio.currentText()
                     self.ocio_config['config'] = _ocio
