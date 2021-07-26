@@ -585,9 +585,9 @@ class RenderManForSP(object):
                     i = 0
                     for _tset, chans in self.spx_exported_files.items():
                         for _chan, imgs in chans.items():
+                            self.spx_progress.setValue(i)
+                            QApplication.processEvents()
                             for img in imgs:
-                                self.spx_progress.setValue(i)
-                                QApplication.processEvents()
                                 try:
                                     os.remove(img)
                                 except (OSError, IOError) as err:
