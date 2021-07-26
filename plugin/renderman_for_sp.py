@@ -671,10 +671,8 @@ class RenderManForSP(object):
                     tex_path = export_path.join('exported')
                     create_directory(tex_path)
                     config['exportPath'] = tex_path.os_path()
-                    # config['defaultExportPreset'] = spr.ResourceID(
-                    #     context='allegorithmic', name='Renderman (pxrDisney)').url()
                     config['exportList'] = [{'rootPath': n} for n in tset_names]
-                    # print_dict(config, msg='config:\n')
+                    # LOG.debug_info(json.dumps(config, indent=2))
                     result = spex.export_project_textures(config)
                     if result.status != spex.ExportStatus.Success:
                         LOG.error(result.message)
