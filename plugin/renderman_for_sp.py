@@ -441,6 +441,8 @@ class RenderManForSP(object):
                                                      node_name, asset))
 
                         # parallel txmaking
+                        self.spx_progress.setLabelText(
+                            '%s: Converting textures...' % mat.name())
                         self.parallel_txmake(txmk_cmds)
 
                         # update asset with new textures
