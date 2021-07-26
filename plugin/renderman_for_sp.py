@@ -73,9 +73,9 @@ class Log(object):
     def __init__(self, loglevel=spl.ERROR):
         self.channel = 'RenderMan %s' % __version__
         self.loglevel = int(loglevel)
-        self.info('Log Level: %s (%s)', loglevel, self.loglevel)
+        self.debug_info('Log Level: %s (%s)', loglevel, self.loglevel)
         pyv = sys.version_info
-        self.info('SP python: %d.%d.%d', *tuple(pyv[0:3]))
+        self.debug_info('SP python: %d.%d.%d', *tuple(pyv[0:3]))
 
     def debug_error(self, msg, *args):
         if self.loglevel >= int(spl.DBG_ERROR):     # 5
@@ -408,7 +408,7 @@ class RenderManForSP(object):
 
                         # create texture nodes
                         LOG.debug_info('  + Create texture nodes...')
-                        txmk_cmds = []  # txamke invocations
+                        txmk_cmds = []  # txmake invocations
                         tex_funcs = []  # calls to add textures to the asset
                         chan_nodes = {}
                         for ch_type in chans:
@@ -575,18 +575,22 @@ class RenderManForSP(object):
 
 
                     # clean-up intermediate files
-                    for mat in tset_list:
-                        for _chan, fpath_list in chans.items():
-                            for fpath in fpath_list:
-                                if not os.path.exists(fpath):
-                                    LOG.warning('cleanup: file not found: %s', fpath)
-                                    continue
+                    self.spx_progress.setLabelText('Cleaning up...')
+                    i = 0
+                    for _tset, chans in self.spx_exported_files.items():
+                        for _chan, imgs in chans.items():
+                            for img in imgs:
+                                self.spx_progress.setValue(i)
+                                QApplication.processEvents()
                                 try:
-                                    os.remove(fpath)
-                                except (OSError, IOError):
-                                    LOG.error('Cleanup failed: %s' % fpath)
+                                    os.remove(img)
+                                except (OSError, IOError) as err:
+                                    LOG.error('Cleanup #%04d failed: %s -> %s', i, img, err)
                                 else:
-                                    LOG.debug_info('Cleanup: %s' % fpath)
+                                    LOG.debug_info('Cleanup #%04d: %s', i, img)
+                                i += 1
+                    self.spx_progress.setValue(i)
+                    QApplication.processEvents()
 
                     # cleanup progress dialog
                     self.spx_progress.close()
@@ -679,7 +683,8 @@ class RenderManForSP(object):
                     for stack, texs in result.textures.items():
                         LOG.debug_info('  |_ Stack %s: ', stack)
                         stck_name = stack[0]
-                        self.spx_exported_files[stck_name] = {}
+                        if stck_name not in self.spx_exported_files:
+                            self.spx_exported_files[stck_name] = {}
                         for t in texs:
                             LOG.debug_info('     |_ %s', t)
                             if t:
@@ -689,6 +694,8 @@ class RenderManForSP(object):
                                 else:
                                     self.spx_exported_files[stck_name][ch_type] = [t]
                                 self.spx_num_textures += 1
+                    # LOG.debug_info(json.dumps(self.spx_exported_files, indent=2))
+                    LOG.debug_info('num exported images: %s', self.spx_num_textures)
 
                 def textureset_channels(self, spts_textureset):
                     """Return a dict of channel_type : list of textures."""
