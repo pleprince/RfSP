@@ -437,7 +437,8 @@ class RenderManForSP(object):
                                 tex_funcs.append(
                                     partial(add_texture_node, asset, node_name,
                                             'PxrTexture', fpath))
-                            tex_funcs.append(partial(set_params, settings, ch_type, node_name, asset))
+                            tex_funcs.append(partial(set_params, settings, ch_type,
+                                                     node_name, asset))
 
                         # parallel txmaking
                         self.parallel_txmake(txmk_cmds)
@@ -596,7 +597,7 @@ class RenderManForSP(object):
                     LOG.debug_info('RenderMan : Done !')
                     return True
 
-                def importAsset(self, *args, **kwargs):
+                def importAsset(self, *_args, **_kwargs):
                     LOG.info('Asset import is not supported in Substance Painter !')
 
                 def addUiExportOptions(self, top_layout, mode):
