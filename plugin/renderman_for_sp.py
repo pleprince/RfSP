@@ -334,11 +334,10 @@ class RenderManForSP(object):
                     for mat in tset_list:
                         label = scene
                         is_udim = mat.has_uv_tiles()
-                        if not is_udim:
-                            label = '%s_%s' % (scene, mat.name())
+                        label = '%s_%s' % (scene, mat.name())
 
                         chans = self.textureset_channels(mat)
-                        LOG.debug_info('+ Exporting %s', label)
+                        LOG.debug_info('+ Exporting %s (udim = %s)', label, is_udim)
 
                         asset_path = export_path.join(label + '.rma')
                         LOG.debug_info('  + asset_path %s', asset_path)
