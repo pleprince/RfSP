@@ -43,6 +43,7 @@ import subprocess
 import shutil
 import time
 import copy
+from math import log2
 from functools import partial
 import multiprocessing as mp
 from PySide2.QtCore import (QResource, Qt)
@@ -256,6 +257,8 @@ class RenderManForSP(object):
                     self.spx_progress = None
                     self.opt_bxdf = None
                     self.opt_ocio = None
+                    self.opt_resolution = None
+                    self.res_override = None
                     self._defaultLabel = 'UNTITLED'
                     self.ocio_config = {'config': None, 'path': None}
                     # render previews
@@ -634,6 +637,11 @@ class RenderManForSP(object):
                     self.opt_ocio.addItems(['Off', 'ACES-1.2',
                                             'filmic-blender', '$OCIO'])
                     lyt.addRow('Color configuration :', self.opt_ocio)
+                    # export resolution
+                    self.opt_resolution = QComboBox()
+                    self.opt_resolution.addItems(
+                        ['Project settings'] + [str(2**x) for x in range(7, 14)])
+                    lyt.addRow('Texture Resolution :', self.opt_resolution)
                     # add to parent layout
                     top_layout.addWidget(grp)
                     # set last used bxdf, ocio config and bump roughness
@@ -643,6 +651,9 @@ class RenderManForSP(object):
                     ocio_config = self.prefsobj.get('ocio config', None)
                     if ocio_config:
                         self.opt_ocio.setCurrentText(ocio_config)
+                    last_res = self.prefsobj.get('export resolution', None)
+                    if last_res:
+                        self.opt_resolution.setCurrentText(last_res)
 
                 def _load_rules(self):
                     fpath = FilePath(root_dir()).join('renderman_rules.json')
@@ -659,8 +670,12 @@ class RenderManForSP(object):
                     meta['author'] = getpass.getuser()
                     meta['description'] = ('Created by RenderMan for Substance '
                                            'Painter %s' % __version__)
-                    res = sp_ts.get_resolution()
-                    meta['resolution'] = '%d x %d' %  (res.width, res.height)
+                    if self.res_override:
+                        res = 2**self.res_override
+                        meta['resolution'] = '%d x %d' % (res, res)
+                    else:
+                        res = sp_ts.get_resolution()
+                        meta['resolution'] = '%d x %d' %  (res.width, res.height)
                     for k, v in meta.items():
                         asset.addMetadata(k, v)
                     # Compatibility data
@@ -679,6 +694,16 @@ class RenderManForSP(object):
                     tex_path = export_path.join('exported')
                     create_directory(tex_path)
                     config['exportPath'] = tex_path.os_path()
+                    # set export resolution if overriden
+                    self.res_override = self.opt_resolution.currentText()
+                    self.prefsobj.set('export resolution', self.res_override)
+                    try:
+                        self.res_override = int(log2(int(self.res_override)))
+                    except ValueError:
+                        self.res_override = None
+                    else:
+                        LOG.debug_info('Override resolution to %s', self.res_override)
+                        config['exportParameters'][0]['parameters']['sizeLog2'] = self.res_override
                     # make sure each texture set only exports existing channels.
                     config['exportList'] = []
                     # find all requested channels
