@@ -34,7 +34,7 @@ This plugin will NOT work without the following software:
 
 * Download a zip archive from the github page
 * Un-zip the archive
-* Copy the files in the "plugin" folder inside Substance Painter's python plugin folder.
+* Copy the 3 files inside the "plugin" folder directly in Substance Painter's python/plugins folder (do not copy the "plugin" folder in python/plugins).
   > OSX: `/Users/yourlogin/Documents/Substance Painter 2/python/plugins`
 
 ## Known Issues
