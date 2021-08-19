@@ -148,8 +148,8 @@ class Prefs(object):
 
     def __init__(self):
         self.prefs = {}
-        self.root = root_dir()
-        self.file = os.path.join(self.root, 'renderman.prefs')
+        self.root = os.path.expanduser('~')
+        self.file = os.path.join(self.root, 'renderman_for_substance_painter.prefs')
         self.load()
         LOG.debug_info('Prefs created')
 
