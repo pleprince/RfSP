@@ -856,6 +856,14 @@ def pick_rmantree():
             raise RuntimeError('This is not a RenderMan Pro Server directory')
         else:
             return pick_rmantree()
+    # validate RMANTREE
+    #   A user entered:
+    #       "C:/Program Files/Pixar/RenderManProServer-24.1/lib/RenderManAssetLibrary"
+    #   make sure the path ends with RenderManProServer-xx.x
+    head, tail = os.path.split(rmantree)
+    while not tail.startswith('RenderManProServer-'):
+        rmantree = head
+        head, tail = os.path.split(rmantree)
     return rmantree
 
 
