@@ -875,14 +875,16 @@ def env_check(prefs):
     # check the version
     rps_version = re.search(r'RenderManProServer-([\d\.]+)', rmantree).group(1)
     if rps_version < MIN_RPS:
+        LOG.warning('RMANTREE too old (%r): %r', rps_version, rmantree)
         ret = msg_box(
             'RenderMan version too old !',
             'This software needs RendermanProServer-%s+ to run.' % MIN_RPS,
             QMessageBox.Abort | QMessageBox.Retry, QMessageBox.Retry)
         if ret == QMessageBox.Retry:
             return env_check(prefs)
-        raise RuntimeError(
-            'This software needs RendermanProServer-%s+ to run.' % MIN_RPS)
+        else:
+            raise RuntimeError(
+                'This software needs RendermanProServer-%s+ to run.' % MIN_RPS)
 
     LOG.info('RMANTREE = %r', rmantree)
     os.environ['RMANTREE'] = rmantree
