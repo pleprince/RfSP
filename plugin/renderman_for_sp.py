@@ -40,12 +40,8 @@ import tempfile
 import getpass
 import re
 import subprocess
-import shutil
-import time
 import copy
 from math import log2
-from functools import partial
-import multiprocessing as mp
 from PySide2.QtCore import (QResource, Qt)
 from PySide2.QtGui import (QIcon)
 from PySide2.QtWidgets import (
@@ -66,8 +62,8 @@ import substance_painter.textureset as spts
 import substance_painter.export as spex
 
 
-__version__ = '24.1.0'
-MIN_RPS = '24.1'
+__version__ = '24.2.0'
+MIN_RPS = '24.2'
 MIN_SP_API = '0.1.0'
 
 
@@ -107,7 +103,7 @@ class Log(object):
 LOG = Log(loglevel=spl.ERROR)
 # # enable python debugging
 # import ptvsd
-# ptvsd.enable_attach(address=('0.0.0.0', 56788))
+# ptvsd.enable_attach(address=('0.0.0.0', 56787))
 
 
 def root_dir():
@@ -216,12 +212,14 @@ class RenderManForSP(object):
             import rman_utils.rman_assets.core as rac
             import rman_utils.rman_assets.ui as rui
             import rman_utils.rman_assets.lib as ral
+            from rman_utils.rman_assets.common.external_files import (Storage, ExternalFileManager, replace_img_with_tex)
             from rman_utils.filepath import FilePath
             import logging
         except BaseException as err:
             LOG.error('Failed to import: %s', err)
             traceback.print_exc(file=sys.stdout)
         else:
+            # Make sure we get logging from the rman_assets module
             ra.setLogLevel(logging.INFO)
 
             class SPrefs(ral.HostPrefs):
@@ -231,7 +229,11 @@ class RenderManForSP(object):
                     'rpbSelectedCategory': 'Materials',
                     'rpbSelectedLibrary': FilePath(''),
                     'rpbRenderAllHDRs': False,
-                    'rpbHideFactoryLib': False
+                    'rpbHideFactoryLib': False,
+                    'rpbStorageMode': Storage.k_asset,
+                    'rpbStorageKey': '',
+                    'rpbStoragePath': '',
+                    'rpbConvertToTex': True
                 }
 
                 def __init__(self, rman_version, pref_obj):
@@ -262,9 +264,55 @@ class RenderManForSP(object):
                     self.res_override = None
                     self._defaultLabel = 'UNTITLED'
                     self.ocio_config = {'config': None, 'path': None}
+                    self.spx_ui = None
                     # render previews
                     self.hostTree = ''
                     self.rmanTree = self.prefsobj.get('RMANTREE', '')
+                    self.imgs_colorspace = {}
+
+                    def ExternalFileManager_txmake(cls, src, dst):
+                        """MONKEY_PATCH: Convert images files to textures.
+                        """
+                        if self.spx_progress:
+                            self.spx_progress.setValue(self.spx_progress.value() + 1)
+                            QApplication.processEvents()
+
+                        rmantree = FilePath(os.environ.get('RMANTREE'))
+                        txmake = rmantree.join('bin', app('txmake')).os_path()
+                        cmd = [txmake]
+                        # print('txmake for %s' % cls._type)
+                        if cls.asset_type == 'envMap':
+                            cmd += ['-envlatl',
+                                    '-filter', 'box',
+                                    '-format', 'openexr',
+                                    '-compression', 'pxr24',
+                                    '-newer',
+                                    'src', 'dst']
+                        else:
+                            cmd += ['-resize', 'round-',
+                                    '-mode', 'periodic',
+                                    '-format', 'openexr',
+                                    '-compression', 'pxr24',
+                                    '-newer',
+                                    'src', 'dst']
+                        if self.ocio_config['path']:
+                            colorspace = self.imgs_colorspace[src.basename()]
+                            cmd += ['-ocioconfig', self.ocio_config['path'],
+                                    '-ocioconvert', colorspace, 'rendering']
+                        cmd[-2] = src.os_path()
+                        texfile = replace_img_with_tex(dst)
+                        cmd[-1] = texfile.os_path()
+                        LOG.debug_info('> Converting to texture :')
+                        LOG.debug_info('    %s -> %s', cmd[-2], cmd[-1])
+                        LOG.debug_info('    %s', ' '.join(cmd))
+                        pobj = subprocess.Popen(cmd,
+                                                stdout=subprocess.PIPE,
+                                                stderr=subprocess.PIPE,
+                                                startupinfo=startup_info())
+                        pobj.wait()
+
+                    setattr(ExternalFileManager, 'txmake', ExternalFileManager_txmake)
+
                     LOG.debug_info('SPrefs object created')
 
                 def getHostPref(self, pref_name, default_value):
@@ -319,37 +367,46 @@ class RenderManForSP(object):
                     mappings = bxdf_rules['mapping']
                     graph = bxdf_rules.get('graph', None)
                     settings = bxdf_rules.get('settings', None)
-                    scene = infodict['label']
+                    scene = infodict['label'].replace(' ', '_')
 
                     # we save the assets to SP's export directory, because we
                     # know it is writable. We will move them to the requested
                     # location later.
+                    lib_path = FilePath(ral.getAbsCategoryPath(self.cfg, categorypath))
                     export_path = FilePath(tempfile.mkdtemp(prefix='rfsp_export_'))
 
                     # export project textures
                     self.sp_export(export_path)
 
                     # open progress dialog
+                    self.spx_progress = None
                     self.spx_progress = QProgressDialog(
                         'Converting textures...', 'Cancel',
                         0, self.spx_num_textures - 1)
                     self.spx_progress.setMinimumDuration(1)
+                    self.spx_progress.setAutoClose(True)
                     QApplication.processEvents()
 
                     # list of spts.TextureSet objects
                     tset_list = spts.all_texture_sets()
 
                     # build assets
-                    asset_list = []
                     for mat in tset_list:
+                        if self.spx_progress.wasCanceled():
+                            self.spx_progress.reset()
+                            self.spx_progress.deleteLater()
+                            self.spx_progress = None
+                            LOG.info('RenderMan : Canceled export !')
+                            return True
                         label = scene
                         is_udim = mat.has_uv_tiles()
                         label = '%s_%s' % (scene, mat.name())
 
                         chans = self.textureset_channels(mat)
                         LOG.debug_info('+ Exporting %s (udim = %s)', label, is_udim)
+                        self.spx_progress.setLabelText('Converting textures: %s' % label)
 
-                        asset_path = export_path.join(label + '.rma')
+                        asset_path = lib_path.join(label + '.rma')
                         LOG.debug_info('  + asset_path %s', asset_path)
                         asset_json_path = asset_path.join('asset.json')
                         LOG.debug_info('  + asset_json_path %s', asset_json_path)
@@ -357,9 +414,26 @@ class RenderManForSP(object):
                         # create asset directory
                         create_directory(asset_path)
 
+                        # The chosen asset name is only a prefix if there are
+                        # multiple materials, so we need to update the storage
+                        # for each asset !
+                        requested_storage = infodict.get('storage', None)
+                        storage = Storage(
+                            requested_storage.mode,
+                            asset_path=asset_path,
+                            lib_path=FilePath(self.cfg.getCurrentLibraryPath()),
+                            key=requested_storage.key,
+                            path=FilePath(self.rpbStoragePath)
+                        )
+
                         # create asset
                         try:
-                            asset = rac.RmanAsset(assetType='nodeGraph', label=label)
+                            asset = rac.RmanAsset(
+                                assetType='nodeGraph',
+                                label=label,
+                                previewType=previewtype,
+                                storage=storage,
+                                convert_to_tex=infodict.get('convert_to_tex', True))
                         except Exception:
                             LOG.error('Asset creation failed')
                             raise
@@ -417,8 +491,6 @@ class RenderManForSP(object):
 
                         # create texture nodes
                         LOG.debug_info('  + Create texture nodes...')
-                        txmk_cmds = []  # txmake invocations
-                        tex_funcs = []  # calls to add textures to the asset
                         chan_nodes = {}
                         for ch_type in chans:
                             fpath_list = self.spx_exported_files[mat.name()].get(ch_type, None)
@@ -430,34 +502,17 @@ class RenderManForSP(object):
                             node_name = "%s_%s_tex" % (label, ch_type)
                             LOG.debug_info('    |_ %s', node_name)
                             chan_nodes[ch_type] = node_name
-                            colorspace = mappings[ch_type]['ocio']
-                            # prep all txmake tasks
-                            fpath, cmds = self.txmake_prep(
-                                is_udim, asset_path, fpath_list, self.ocio_config,
-                                colorspace)
-                            txmk_cmds += cmds
-                            # prep asset updates that need to be done once the
-                            # textures are available
+                            # compute asset file reference
+                            fpath = self.asset_file_ref(is_udim, fpath_list)
+                            # store colorspace for each input image
+                            ch_colorspace = mappings[ch_type]['ocio']
+                            for fpo in fpath_list:
+                                self.imgs_colorspace[fpo.basename()] = ch_colorspace
                             if ch_type == 'Normal':
-                                tex_funcs.append(
-                                    partial(add_texture_node, asset, node_name,
-                                            'PxrNormalMap', fpath))
+                                add_texture_node(asset, node_name, 'PxrNormalMap', fpath)
                             else:
-                                tex_funcs.append(
-                                    partial(add_texture_node, asset, node_name,
-                                            'PxrTexture', fpath))
-                            tex_funcs.append(partial(set_params, settings, ch_type,
-                                                     node_name, asset))
-
-                        # parallel txmaking
-                        self.spx_progress.setLabelText(
-                            '%s: Converting %d textures...' %
-                            (mat.name(), len(txmk_cmds)))
-                        self.parallel_txmake(txmk_cmds)
-
-                        # update asset with new textures
-                        for func in tex_funcs:
-                            func()
+                                add_texture_node(asset, node_name, 'PxrTexture', fpath)
+                            set_params(settings, ch_type, node_name, asset)
 
                         # make direct connections
                         #
@@ -556,34 +611,18 @@ class RenderManForSP(object):
                             LOG.error('Saving the asset failed ! : %s', err)
                             raise
 
-                        # mark this asset as ready to be moved
-                        #
-                        asset_list.append(asset_path)
-
                         # update label to make sure the preview is rendered
                         # TODO: this should be a list as we can export more than
                         # one asset.
-                        infodict['label'] = label
-
-                    # move assets to the requested location
-                    #
-                    dst = ral.getAbsCategoryPath(self.cfg, categorypath)
-                    for item in asset_list:
-                        # if the asset already exists in the destination
-                        # location, we need to move it first.
-                        dst_asset = os.path.join(dst, os.path.basename(item))
-                        if os.path.exists(dst_asset):
-                            try:
-                                os.rename(dst_asset, dst_asset + '_old')
-                            except (OSError, IOError):
-                                LOG.error('Could not rename asset to %s_old' % dst_asset)
-                                continue
-                            else:
-                                shutil.rmtree(dst_asset + '_old', ignore_errors=False)
-                        try:
-                            shutil.move(item, dst)
-                        except (OSError, IOError):
-                            LOG.error('WARNING: Could not copy asset to %s' % dst)
+                        if mat != tset_list[-1]:
+                            # render all but the last preview
+                            self.spx_ui.assetList.update()
+                            self.spx_ui.assetList.selectSwatchByLabel(label)
+                            QApplication.processEvents()
+                            self.spx_ui.renderPreview()
+                        else:
+                            # update label to make sure the last preview is rendered
+                            infodict['label'] = label
 
                     # clean-up intermediate files
                     self.spx_progress.setLabelText('Cleaning up...')
@@ -605,7 +644,7 @@ class RenderManForSP(object):
 
                     # cleanup progress dialog
                     self.spx_progress.close()
-                    del self.spx_progress
+                    self.spx_progress.deleteLater()
                     self.spx_progress = None
                     QApplication.processEvents()
 
@@ -740,6 +779,7 @@ class RenderManForSP(object):
                         for t in texs:
                             LOG.debug_info('     |_ %s', t)
                             if t:
+                                t = FilePath(t)
                                 ch_type = re.search(r'_([A-Za-z]+)(\.\d{4})*\.\w{3}$', t).group(1)
                                 if ch_type in self.spx_exported_files[stck_name]:
                                     self.spx_exported_files[stck_name][ch_type].append(t)
@@ -761,72 +801,11 @@ class RenderManForSP(object):
                                 self.spx_exported_files[ts_name].get(ch, [])
                     return result
 
-                def txmake_prep(self, is_udim, asset_path, fpath_list, ocio_config,
-                                ocio_colorspace):
-                    """Return the txmake invocations and the file path for the
-                    asset."""
-                    rmantree = FilePath(os.environ['RMANTREE'])
-                    binary = rmantree.join('bin', app('txmake')).os_path()
-                    cmd = [binary]
+                def asset_file_ref(self, is_udim, fpath_list):
+                    file_ref = fpath_list[0]
                     if is_udim:
-                        cmd += ['-resize', 'round-',
-                                '-mode', 'clamp',
-                                '-format', 'openexr',
-                                '-compression', 'pxr24',
-                                '-newer']
-                    else:
-                        cmd += ['-resize', 'round-',
-                                '-mode', 'periodic',
-                                '-format', 'openexr',
-                                '-compression', 'pxr24',
-                                '-newer']
-                    if ocio_config['path']:
-                        cmd += ['-ocioconfig', ocio_config['path'],
-                                '-ocioconvert', ocio_colorspace, 'rendering']
-                    cmd += ['src', 'dst']
-                    LOG.debug_info('       |_ cmd = %r', ' '.join(cmd))
-                    cmds = []
-                    for img in fpath_list:
-                        img = FilePath(img)
-                        cmd[-2] = img.os_path()
-                        filename = img.basename()
-                        texfile = os.path.splitext(filename)[0] + '.tex'
-                        cmd[-1] = asset_path.join(texfile).os_path()
-                        cmds.append(list(cmd))
-                    # return a local path to the tex file.
-                    filename = FilePath(fpath_list[0]).basename()
-                    fname, _ = os.path.splitext(filename)
-                    asset_file_ref = FilePath(asset_path).join(fname + '.tex')
-                    if is_udim:
-                        asset_file_ref = re.sub(r'1\d{3}', '<UDIM>', asset_file_ref)
-                    return FilePath(asset_file_ref), cmds
-
-                def parallel_txmake(self, txmk_cmds):
-                    """Run all txmake invocations for the current asset, using
-                    a pool of worker threads."""
-                    errors = []
-                    nthreads = mp.cpu_count() // 2
-                    ts = time.time()
-
-                    if os.name == 'nt':
-                        # NO MULTIPROCESSING FOR WINDOWS !!!!!
-                        for i, cmd in enumerate(txmk_cmds):
-                            txmake((cmd, dict(os.environ)))
-                            self.spx_progress.setValue(i)
-                            QApplication.processEvents()
-                    else:
-                        p = mp.Pool(nthreads)
-                        for i, _ in enumerate(
-                                p.imap_unordered(txmake, [(c, dict(os.environ)) for c in txmk_cmds])):
-                            self.spx_progress.setValue(i)
-                            QApplication.processEvents()
-
-                    te = time.time()
-                    LOG.info('txmake: created %d textures in %0.4f sec (%s workers)',
-                             len(txmk_cmds), (te - ts), nthreads)
-
-                    for err in errors:
-                        LOG.error('  + errors = %s', err)
+                        file_ref = re.sub(r'1\d{3}', '<UDIM>', file_ref)
+                    return FilePath(file_ref)
 
                 # end of SPrefs ------------------------------------------------
 
@@ -837,6 +816,7 @@ class RenderManForSP(object):
                 traceback.print_exc(file=sys.stdout)
             else:
                 root.setLayout(self.aui.topLayout)
+                self.aui.hostPrefs.spx_ui = self.aui
 
         LOG.debug_info('  |_ done')
         return root, dock
@@ -926,9 +906,9 @@ def set_params(settings_dict, chan, node_name, asset):
 
 def add_texture_node(asset, node_name, ntype, filepath):
     asset.addNode(node_name, ntype, 'pattern', ntype)
-    pdict = {'type': 'string', 'value': filepath.basename()}
+    asset_fpath = asset.processExternalFile(filepath)
+    pdict = {'type': 'string', 'value': asset_fpath}
     asset.addParam(node_name, 'filename', pdict)
-    asset.addDependency(pdict['value'])
 
 
 def condition_match(jdata, chans):
