@@ -144,6 +144,7 @@ def txmake(args):
         raise RuntimeError("File doesn't exist: %s\n%s\n%s" %
                            (cmd[-1], str(p.stderr.read()), ' '.join(cmd)))
 
+
 class Prefs(object):
 
     def __init__(self):
@@ -414,7 +415,6 @@ class RenderManForSP(object):
                                     asset.addConnection('%s.outColor' % lname,
                                                         '%s.displacementShader' % root_node)
 
-
                         # create texture nodes
                         LOG.debug_info('  + Create texture nodes...')
                         txmk_cmds = []  # txmake invocations
@@ -552,8 +552,8 @@ class RenderManForSP(object):
                         LOG.debug_info('  + ready to save: %s' % asset_json_path)
                         try:
                             asset.save(asset_json_path, False)
-                        except:
-                            LOG.error('Saving the asset failed !')
+                        except BaseException as err:
+                            LOG.error('Saving the asset failed ! : %s', err)
                             raise
 
                         # mark this asset as ready to be moved
@@ -584,7 +584,6 @@ class RenderManForSP(object):
                             shutil.move(item, dst)
                         except (OSError, IOError):
                             LOG.error('WARNING: Could not copy asset to %s' % dst)
-
 
                     # clean-up intermediate files
                     self.spx_progress.setLabelText('Cleaning up...')
@@ -675,7 +674,7 @@ class RenderManForSP(object):
                         meta['resolution'] = '%d x %d' % (res, res)
                     else:
                         res = sp_ts.get_resolution()
-                        meta['resolution'] = '%d x %d' %  (res.width, res.height)
+                        meta['resolution'] = '%d x %d' % (res.width, res.height)
                     for k, v in meta.items():
                         asset.addMetadata(k, v)
                     # Compatibility data
@@ -847,7 +846,7 @@ def pick_rmantree():
     rmantree = QFileDialog.getExistingDirectory(
         None,
         caption='Select your RenderManProServer %s+ directory' % MIN_RPS)
-    if not 'RenderManProServer-' in rmantree:
+    if 'RenderManProServer-' not in rmantree:
         ret = msg_box(
             'This is not a RenderManProServer directory !',
             'This software needs RendermanProServer-%s+ to run.' % MIN_RPS,
@@ -934,7 +933,7 @@ def add_texture_node(asset, node_name, ntype, filepath):
 
 def condition_match(jdata, chans):
     """Return True is all conditions match."""
-    if not 'conditions' in jdata:
+    if 'conditions' not in jdata:
         return True
     match = True
     for cond, val in jdata['conditions'].items():
