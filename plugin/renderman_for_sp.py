@@ -293,12 +293,12 @@ class RenderManForSP(object):
                                     '-mode', 'periodic',
                                     '-format', 'openexr',
                                     '-compression', 'pxr24',
-                                    '-newer',
-                                    'src', 'dst']
+                                    '-newer']
                         if self.ocio_config['path']:
                             colorspace = self.imgs_colorspace[src.basename()]
                             cmd += ['-ocioconfig', self.ocio_config['path'],
                                     '-ocioconvert', colorspace, 'rendering']
+                        cmd += ['src', 'dst']
                         cmd[-2] = src.os_path()
                         texfile = replace_img_with_tex(dst)
                         cmd[-1] = texfile.os_path()
