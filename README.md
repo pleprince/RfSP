@@ -1,6 +1,6 @@
 # RfSP
 
-## RenderMan for Substance Painter 24.1
+## RenderMan for Substance Painter 24.3
 
 This plugin exports your [Substance Painter](https://www.allegorithmic.com/products/substance-painter) project as one or more RenderManAsset.
 
@@ -28,7 +28,7 @@ RenderManAsset is the format used by the preset browser that was introduced in [
 This plugin will NOT work without the following software:
 
 * Substance Painter 2021.1+, Adobe Substance 3D Painter
-* RenderMan Pro Server 24.1+
+* RenderMan Pro Server 24.3+
 
 ## Install
 
@@ -39,7 +39,6 @@ This plugin will NOT work without the following software:
 
 ## Known Issues
 
-* Converted textures' names do not contain the source and destination colorspace.
-* When multiple assets are created, only the last one gets a preview render.
+* The progress dialog is temporarily a bit useless. This will be fixed in the next RenderMan version.
 * The icons of the export dialog are clipped.
 * The "import" item of the swatch's contextual menu should be disabled.
