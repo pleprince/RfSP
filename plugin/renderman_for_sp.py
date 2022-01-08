@@ -26,8 +26,9 @@ Export substance painter maps to a RenderMan Asset package.
 #  SOFTWARE.
 # -----------------------------------------------------------------------------
 
+# TODO: make export interruptible
+# TODO: Modify core to pass a progress object
 # TODO: remove non-exportable channels for def.
-# TODO: name textures with color spaces
 # pylint: disable=missing-docstring,invalid-name,import-error
 
 import os
@@ -62,9 +63,15 @@ import substance_painter.textureset as spts
 import substance_painter.export as spex
 
 
-__version__ = '24.2.0'
-MIN_RPS = '24.2'
+__version__ = '24.3.0'
+MIN_RPS = '24.3'
 MIN_SP_API = '0.1.0'
+OCIO_CONFIGS = [
+    'Off',
+    'ACES-1.2',
+    'filmic-blender',
+    '$OCIO'
+]
 
 
 class Log(object):
@@ -212,8 +219,9 @@ class RenderManForSP(object):
             import rman_utils.rman_assets.core as rac
             import rman_utils.rman_assets.ui as rui
             import rman_utils.rman_assets.lib as ral
-            from rman_utils.rman_assets.common.external_files import (Storage, ExternalFileManager, replace_img_with_tex)
+            from rman_utils.rman_assets.common.external_files import Storage
             from rman_utils.filepath import FilePath
+            from rman_utils.color_manager import ColorManager
             import logging
         except BaseException as err:
             LOG.error('Failed to import: %s', err)
@@ -263,56 +271,13 @@ class RenderManForSP(object):
                     self.opt_resolution = None
                     self.res_override = None
                     self._defaultLabel = 'UNTITLED'
-                    self.ocio_config = {'config': None, 'path': None}
+                    self.ocio_config = {'config': None, 'path': None,
+                                        'rules': None, 'aliases': None}
                     self.spx_ui = None
                     # render previews
                     self.hostTree = ''
                     self.rmanTree = self.prefsobj.get('RMANTREE', '')
                     self.imgs_colorspace = {}
-
-                    def ExternalFileManager_txmake(cls, src, dst):
-                        """MONKEY_PATCH: Convert images files to textures.
-                        """
-                        if self.spx_progress:
-                            self.spx_progress.setValue(self.spx_progress.value() + 1)
-                            QApplication.processEvents()
-
-                        rmantree = FilePath(os.environ.get('RMANTREE'))
-                        txmake = rmantree.join('bin', app('txmake')).os_path()
-                        cmd = [txmake]
-                        # print('txmake for %s' % cls._type)
-                        if cls.asset_type == 'envMap':
-                            cmd += ['-envlatl',
-                                    '-filter', 'box',
-                                    '-format', 'openexr',
-                                    '-compression', 'pxr24',
-                                    '-newer',
-                                    'src', 'dst']
-                        else:
-                            cmd += ['-resize', 'round-',
-                                    '-mode', 'periodic',
-                                    '-format', 'openexr',
-                                    '-compression', 'pxr24',
-                                    '-newer']
-                        if self.ocio_config['path']:
-                            colorspace = self.imgs_colorspace[src.basename()]
-                            cmd += ['-ocioconfig', self.ocio_config['path'],
-                                    '-ocioconvert', colorspace, 'rendering']
-                        cmd += ['src', 'dst']
-                        cmd[-2] = src.os_path()
-                        texfile = replace_img_with_tex(dst)
-                        cmd[-1] = texfile.os_path()
-                        LOG.debug_info('> Converting to texture :')
-                        LOG.debug_info('    %s -> %s', cmd[-2], cmd[-1])
-                        LOG.debug_info('    %s', ' '.join(cmd))
-                        pobj = subprocess.Popen(cmd,
-                                                stdout=subprocess.PIPE,
-                                                stderr=subprocess.PIPE,
-                                                startupinfo=startup_info())
-                        pobj.wait()
-
-                    setattr(ExternalFileManager, 'txmake', ExternalFileManager_txmake)
-
                     LOG.debug_info('SPrefs object created')
 
                 def getHostPref(self, pref_name, default_value):
@@ -352,15 +317,7 @@ class RenderManForSP(object):
                     self.prefsobj.set('last preset', _preset)
                     LOG.debug_info('chosen preset: %s', _preset)
                     # chosen ocio color config
-                    _ocio = self.opt_ocio.currentText()
-                    self.ocio_config['config'] = _ocio
-                    if _ocio == '$OCIO':
-                        self.ocio_config['path'] = FilePath(os.environ['OCIO'])
-                    elif _ocio != 'Off':
-                        self.ocio_config['path'] = FilePath(self.rmanTree).join(
-                            'lib', 'ocio', _ocio, 'config.ocio')
-                    self.prefsobj.set('ocio config', _ocio)
-                    LOG.debug_info('chosen ocio config: %s', _ocio)
+                    self._get_ocio_config()
                     # setup data
                     bxdf_rules = copy.deepcopy(self.rules['models'][_preset])
                     _bxdf = bxdf_rules['bxdf']
@@ -450,7 +407,7 @@ class RenderManForSP(object):
                         root_node = label + '_Material'
                         asset.addNode(root_node, 'shadingEngine', 'root', 'shadingEngine')
                         pdict = {'type': 'reference float[]', 'value': None}
-                        asset.addParam(root_node, 'surfaceShader', pdict)
+                        asset.addParam(root_node, 'shadingEngine', 'surfaceShader', pdict)
                         LOG.debug_info('  + Root node: %s', root_node)
 
                         # add a disney, pixar or lama bxdf
@@ -481,7 +438,7 @@ class RenderManForSP(object):
                                     '    |_ %s  (%s)', lname, ndict['nodetype'])
                                 if 'params' in ndict:
                                     for pname, pdict in ndict['params'].items():
-                                        asset.addParam(lname, pname, pdict)
+                                        asset.addParam(lname, ndict['nodetype'], pname, pdict)
                                         LOG.debug_info(
                                             '       |_ param: %s %s = %s',
                                             pdict['type'], pname, pdict['value'])
@@ -547,7 +504,8 @@ class RenderManForSP(object):
                             LOG.debug_info('    |_ connect: %s -> %s' % (src, dst))
                             # also tag the bxdf param as connected
                             pdict = {'type': 'reference ' + dst_type, 'value': None}
-                            asset.addParam(bxdf_node, dst_param, pdict)
+                            ntype = 'PxrNormalMap' if ch_type == 'Normal' else 'PxrTexture'
+                            asset.addParam(bxdf_node, ntype, dst_param, pdict)
                             LOG.debug_info(
                                 '       |_ param: %s %s -> %s', pdict['type'],
                                 dst_param, pdict['value'])
@@ -596,7 +554,8 @@ class RenderManForSP(object):
                                 # mark param as a connected
                                 dstType = con['dst']['type']
                                 pdict = {'type': 'reference %s' % dstType, 'value': None}
-                                asset.addParam(dst_node, con['dst']['param'], pdict)
+                                ntype = asset.nodeDict()[dst_node]['rmanNode']
+                                asset.addParam(dst_node, ntype, con['dst']['param'], pdict)
                                 LOG.debug_info(
                                     '       |_ param: %s %s = %s',
                                     pdict['type'], con['dst']['param'],
@@ -672,8 +631,7 @@ class RenderManForSP(object):
                     lyt.addRow('BxDF :', self.opt_bxdf)
                     # color space
                     self.opt_ocio = QComboBox()
-                    self.opt_ocio.addItems(['Off', 'ACES-1.2',
-                                            'filmic-blender', '$OCIO'])
+                    self.opt_ocio.addItems(OCIO_CONFIGS)
                     lyt.addRow('Color configuration :', self.opt_ocio)
                     # export resolution
                     self.opt_resolution = QComboBox()
@@ -807,6 +765,23 @@ class RenderManForSP(object):
                         file_ref = re.sub(r'1\d{3}', '<UDIM>', file_ref)
                     return FilePath(file_ref)
 
+                def _get_ocio_config(self):
+                    _ocio = self.opt_ocio.currentText()
+                    self.ocio_config['config'] = _ocio
+                    if _ocio == '$OCIO':
+                        self.ocio_config['path'] = FilePath(os.environ['OCIO'])
+                    elif _ocio != 'Off':
+                        self.ocio_config['path'] = FilePath(self.rmanTree).join(
+                            'lib', 'ocio', _ocio, 'config.ocio')
+                    else:
+                        self.ocio_config['path'] = None    # not color-managed
+                    # get rules and aliases
+                    color_mgr = ColorManager(self.ocio_config['path'])
+                    self.ocio_config['rules'] = color_mgr.conversion_rules
+                    self.ocio_config['aliases'] = color_mgr.aliases
+                    self.prefsobj.set('ocio config', _ocio)
+                    LOG.debug_info('chosen ocio config: %s', _ocio)
+
                 # end of SPrefs ------------------------------------------------
 
             root.setWindowFlag(Qt.SubWindow, True)
@@ -899,16 +874,17 @@ def set_params(settings_dict, chan, node_name, asset):
         pass
     else:
         for pname, pdict in params.items():
-            asset.addParam(node_name, pname, pdict)
+            ntype = 'PxrNormalMap' if chan == 'Normal' else 'PxrTexture'
+            asset.addParam(node_name, ntype, pname, pdict)
             LOG.debug_info('       |_ param: %s %s = %s', pdict['type'],
                            pname, pdict['value'])
 
 
 def add_texture_node(asset, node_name, ntype, filepath):
     asset.addNode(node_name, ntype, 'pattern', ntype)
-    asset_fpath = asset.processExternalFile(filepath)
+    asset_fpath = asset.processExternalFile(ntype, 'filename', filepath)
     pdict = {'type': 'string', 'value': asset_fpath}
-    asset.addParam(node_name, 'filename', pdict)
+    asset.addParam(node_name, ntype, 'filename', pdict)
 
 
 def condition_match(jdata, chans):
