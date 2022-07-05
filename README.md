@@ -1,5 +1,7 @@
 # RfSP
 
+:warning: This repo is obsolete ! Go to https://github.com/prman-pixar/RfSP for the latest version. :warning:
+
 ## RenderMan for Substance Painter 2.x
 
 This plugin exports your [Substance Painter](https://www.allegorithmic.com/products/substance-painter) project as one or more RenderManAsset.
